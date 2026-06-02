@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Claim Pipeline — Upload PDFs</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    .box { max-width: 800px; margin: auto; }
+    pre { background:#f6f6f6; padding:12px; overflow:auto }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Claim Pipeline</h1>
+    <p>Upload up to 10 PDF files (text-layer PDFs preferred). The pipeline will run and return a triage card.</p>
+
+    <form id="uploadForm">
+      <input type="file" id="files" name="documents" accept="application/pdf" multiple />
+      <br/><br/>
+      <button type="submit">Process Claim</button>
+    </form>
+
+    <h2>Result</h2>
+    <div id="result">
+      <em>No results yet.</em>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const result = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('files');
+      if (!input.files.length) {
+        alert('Please select at least one PDF');
+        return;
+      }
+      const fd = new FormData();
+      for (const f of input.files) fd.append('documents', f, f.name);
+
+      result.innerHTML = '<em>Processing…</em>';
+      try {
+        const res = await fetch('/process-claim', { method: 'POST', body: fd });
+        const txt = await res.text();
+        if (!res.ok) {
+          result.innerHTML = `<pre style="color:crimson">HTTP ${res.status}\n${txt}</pre>`;
+          return;
+        }
+        // Pretty-print JSON
+        let json;
+        try { json = JSON.parse(txt); }
+        catch { result.innerHTML = `<pre>${txt}</pre>`; return; }
+        result.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+      } catch (err) {
+        result.innerHTML = `<pre style="color:crimson">${err.toString()}</pre>`;
+      }
+    });
+  </script>
+</body>
+</html>
