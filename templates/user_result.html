@@ -1,41 +1,199 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Claim Status</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --text: #16202a;
-      --muted: #5b6875;
-      --ok: #16825d;
-      --warn: #a15c00;
-      --bad: #a1133d;
-      --border: #d9e2ef;
+      --teal:      #568A97;
+      --teal-dark: #3f6e7b;
+      --teal-pale: #e8f2f4;
+      --sand:      #D5C6B9;
+      --sand-pale: #ede7e0;
+      --cream:     #F0E9D8;
+      --mauve:     #947D9E;
+      --mauve-pale:#f2eef5;
+      --ink:       #2a2622;
+      --ink-mid:   #5a524a;
+      --ink-light: #8a8078;
+      --white:     #ffffff;
+
+      --status-ok-bg:   #e6f4f1;
+      --status-ok-text: #1e6b5a;
+      --status-warn-bg: #fdf4e7;
+      --status-warn-text: #7a4f00;
+      --status-bad-bg:  #fbeef2;
+      --status-bad-text: #8b1a38;
     }
-    body { margin: 0; font-family: Arial, sans-serif; background: linear-gradient(180deg, #eef4ff, var(--bg)); color: var(--text); }
-    .wrap { max-width: 760px; margin: 40px auto; padding: 0 20px; }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08); }
-    .status { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; font-weight: 700; margin-bottom: 16px; }
-    .approved { background: #eaf8f1; color: var(--ok); }
-    .rejected { background: #fdecef; color: var(--bad); }
-    .pending { background: #fff6e6; color: var(--warn); }
-    h1 { margin: 0 0 12px; font-size: 30px; }
-    p { line-height: 1.6; color: var(--muted); }
-    .claim-id { margin-top: 18px; font-size: 13px; color: var(--muted); }
+
+    html, body {
+      min-height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── layout ── */
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 20px;
+      background:
+        radial-gradient(ellipse 60% 50% at 80% 10%, rgba(86,138,151,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 10% 90%, rgba(148,125,158,0.07) 0%, transparent 70%),
+        var(--cream);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow:
+        0 1px 2px rgba(42,38,34,0.04),
+        0 8px 32px rgba(42,38,34,0.08),
+        0 0 0 1px rgba(213,198,185,0.4);
+      overflow: hidden;
+    }
+
+    /* ── status band ── */
+    .status-band {
+      height: 6px;
+      width: 100%;
+    }
+    .band-approved { background: linear-gradient(90deg, var(--teal), #7ab8c4); }
+    .band-rejected { background: linear-gradient(90deg, var(--mauve), #b89fc4); }
+    .band-pending  { background: linear-gradient(90deg, #c4a86a, #d4b87a); }
+
+    /* ── card body ── */
+    .card-body {
+      padding: 40px 44px 44px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .pill-approved { background: var(--status-ok-bg);   color: var(--status-ok-text); }
+    .pill-rejected { background: var(--status-bad-bg);  color: var(--status-bad-text); }
+    .pill-pending  { background: var(--status-warn-bg); color: var(--status-warn-text); }
+
+    .headline {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 32px;
+      line-height: 1.2;
+      color: var(--ink);
+      margin-bottom: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .reason {
+      font-size: 15px;
+      color: var(--ink-mid);
+      line-height: 1.65;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--sand-pale);
+    }
+
+    /* ── footer meta ── */
+    .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 22px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .claim-ref {
+      font-size: 12px;
+      color: var(--ink-light);
+      letter-spacing: 0.02em;
+    }
+    .claim-ref span {
+      font-family: 'DM Sans', monospace;
+      color: var(--teal);
+      font-weight: 500;
+    }
+
+    /* ── next-steps note for pending ── */
+    .next-note {
+      margin-top: 22px;
+      padding: 16px 20px;
+      background: var(--sand-pale);
+      border-radius: 10px;
+      font-size: 13.5px;
+      color: var(--ink-mid);
+      border-left: 3px solid var(--sand);
+    }
+
+    /* ── branding footer ── */
+    .page-footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: var(--ink-light);
+      letter-spacing: 0.02em;
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="page">
     <div class="card">
-      <div class="status {{ 'approved' if user_result.status == 'approved' else 'rejected' if user_result.status == 'rejected' else 'pending' }}">
-        {{ user_result.status.replace('_', ' ')|upper }}
+
+      <div class="status-band
+        {% if user_result.status == 'approved' %}band-approved
+        {% elif user_result.status == 'rejected' %}band-rejected
+        {% else %}band-pending{% endif %}">
       </div>
-      <h1>{{ user_result.headline }}</h1>
-      <p>{{ user_result.reason }}</p>
-      <div class="claim-id">Claim reference: {{ user_result.claim_id }}</div>
+
+      <div class="card-body">
+
+        <div class="status-pill
+          {% if user_result.status == 'approved' %}pill-approved
+          {% elif user_result.status == 'rejected' %}pill-rejected
+          {% else %}pill-pending{% endif %}">
+          {{ user_result.status | replace('_', ' ') }}
+        </div>
+
+        <h1 class="headline">{{ user_result.headline }}</h1>
+
+        <p class="reason">{{ user_result.reason }}</p>
+
+        {% if user_result.status == 'pending_manual_approval' %}
+        <div class="next-note">
+          A member of our team will review your documents and contact you within 2 business days.
+          Please keep your reference number for correspondence.
+        </div>
+        {% endif %}
+
+        <div class="meta-row">
+          <div class="claim-ref">
+            Reference &nbsp;<span>{{ user_result.claim_id }}</span>
+          </div>
+        </div>
+
+      </div>
     </div>
+
+    <p class="page-footer">Meridian Health Insurance &nbsp;&middot;&nbsp; Secure Claims Portal</p>
   </div>
 </body>
 </html>

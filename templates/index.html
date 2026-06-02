@@ -1,127 +1,475 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Claim Pipeline — Upload PDFs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Submit a Claim — Meridian Health</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; background: #f4f7fb; color: #16202a; }
-    .box { max-width: 900px; margin: auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
-    pre { background:#f6f6f6; padding:12px; overflow:auto; border-radius: 10px; }
-    .status { margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: #eef4ff; color: #24406d; }
-    .muted { color: #5b6875; }
-    button { padding: 10px 16px; border: 0; border-radius: 10px; background: #1f6feb; color: white; cursor: pointer; }
-    button:disabled { opacity: 0.65; cursor: not-allowed; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --teal:       #568A97;
+      --teal-dark:  #3f6e7b;
+      --teal-pale:  #e8f2f4;
+      --sand:       #D5C6B9;
+      --sand-pale:  #ede7e0;
+      --cream:      #F0E9D8;
+      --mauve:      #947D9E;
+      --ink:        #2a2622;
+      --ink-mid:    #5a524a;
+      --ink-light:  #8a8078;
+      --white:      #ffffff;
+      --border:     rgba(213,198,185,0.6);
+      --focus:      rgba(86,138,151,0.25);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* ── left panel ── */
+    .left {
+      background: var(--teal);
+      padding: 64px 56px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .left::before {
+      content: '';
+      position: absolute;
+      top: -80px; right: -80px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+    }
+    .left::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; left: -40px;
+      width: 240px; height: 240px;
+      border-radius: 50%;
+      background: rgba(148,125,158,0.15);
+    }
+
+    .brand {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 22px;
+      color: var(--white);
+      letter-spacing: -0.01em;
+      position: relative;
+      z-index: 1;
+    }
+    .brand-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.55);
+      font-weight: 300;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .left-headline {
+      position: relative;
+      z-index: 1;
+    }
+    .left-headline h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 40px;
+      line-height: 1.18;
+      color: var(--white);
+      letter-spacing: -0.02em;
+      margin-bottom: 20px;
+    }
+    .left-headline p {
+      font-size: 15px;
+      color: rgba(255,255,255,0.70);
+      line-height: 1.65;
+      max-width: 340px;
+    }
+
+    .left-footer {
+      font-size: 12px;
+      color: rgba(255,255,255,0.40);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── right panel ── */
+    .right {
+      background: var(--cream);
+      padding: 64px 56px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .form-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 26px;
+      color: var(--ink);
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+    .form-sub {
+      font-size: 13.5px;
+      color: var(--ink-light);
+      margin-bottom: 36px;
+    }
+
+    .field-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--ink-mid);
+      margin-bottom: 7px;
+    }
+
+    input[type="text"],
+    input[type="email"] {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus,
+    input[type="email"]:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px var(--focus);
+    }
+    input::placeholder { color: var(--ink-light); }
+
+    /* ── file drop zone ── */
+    .drop-zone {
+      width: 100%;
+      padding: 28px 20px;
+      border: 1.5px dashed var(--sand);
+      border-radius: 12px;
+      background: var(--white);
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--teal);
+      background: var(--teal-pale);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-label {
+      font-size: 14px;
+      color: var(--ink-mid);
+      pointer-events: none;
+    }
+    .drop-label strong {
+      color: var(--teal);
+      font-weight: 500;
+    }
+    .drop-hint {
+      font-size: 12px;
+      color: var(--ink-light);
+      margin-top: 5px;
+      pointer-events: none;
+    }
+
+    /* file list */
+    #file-list {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .file-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--sand-pale);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--ink-mid);
+    }
+    .file-chip .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-chip .file-size { color: var(--ink-light); font-size: 11px; white-space: nowrap; }
+
+    /* ── submit button ── */
+    .submit-btn {
+      width: 100%;
+      margin-top: 28px;
+      padding: 14px;
+      background: var(--teal);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+    .submit-btn:hover:not(:disabled) { background: var(--teal-dark); }
+    .submit-btn:active:not(:disabled) { transform: scale(0.99); }
+    .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── status bar ── */
+    .status-bar {
+      margin-top: 18px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: var(--sand-pale);
+      font-size: 13.5px;
+      color: var(--ink-mid);
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background 0.3s;
+    }
+    .status-bar.processing { background: var(--teal-pale); color: var(--teal-dark); }
+    .status-bar.error-state { background: #fbeef2; color: #8b1a38; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(86,138,151,0.3);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── result area ── */
+    #result { margin-top: 6px; }
+
+    /* ── responsive ── */
+    @media (max-width: 840px) {
+      .page { grid-template-columns: 1fr; }
+      .left { padding: 40px 32px; min-height: 200px; }
+      .left-headline h1 { font-size: 28px; }
+      .right { padding: 40px 32px; }
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>Claim Pipeline</h1>
-    <p>Upload up to 10 PDF files (text-layer PDFs preferred). The pipeline will return a simple status for the user.</p>
+<div class="page">
 
-    <form id="uploadForm">
-      <input type="text" id="claimant_name" name="claimant_name" placeholder="Claimant name" required />
-      <br/><br/>
-      <input type="email" id="claimant_email" name="claimant_email" placeholder="Claimant email" required />
-      <br/><br/>
-      <input type="file" id="files" name="documents" accept="application/pdf" multiple />
-      <br/><br/>
-      <button type="submit" id="submitBtn">Process Claim</button>
-    </form>
-
-    <div id="status" class="status muted">Idle.</div>
-
-    <h2>Result</h2>
-    <div id="result">
-      <em>No results yet.</em>
+  <!-- left panel -->
+  <div class="left">
+    <div>
+      <div class="brand">Meridian Health</div>
+      <div class="brand-sub">Insurance</div>
     </div>
+
+    <div class="left-headline">
+      <h1>Submit your medical claim</h1>
+      <p>Upload your supporting documents and we will process your claim automatically — most decisions are returned within seconds.</p>
+    </div>
+
+    <div class="left-footer">Secure &nbsp;&middot;&nbsp; Encrypted in transit &nbsp;&middot;&nbsp; HIPAA-aligned</div>
   </div>
 
-  <script>
-    const form = document.getElementById('uploadForm');
-    const result = document.getElementById('result');
-    const status = document.getElementById('status');
-    const submitBtn = document.getElementById('submitBtn');
+  <!-- right panel -->
+  <div class="right">
+    <p class="form-title">Claim submission</p>
+    <p class="form-sub">All fields are required. Accepted format: PDF only, up to 10 files.</p>
 
-    function updateStatus(message) {
-      status.textContent = message;
+    <div class="field-group">
+      <label for="claimant_name">Full name</label>
+      <input type="text" id="claimant_name" name="claimant_name" placeholder="As it appears on your policy" required>
+    </div>
+
+    <div class="field-group">
+      <label for="claimant_email">Email address</label>
+      <input type="email" id="claimant_email" name="claimant_email" placeholder="For status notifications" required>
+    </div>
+
+    <div class="field-group">
+      <label>Supporting documents</label>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="files" name="documents" accept="application/pdf" multiple>
+        <p class="drop-label">Drop files here or <strong>browse</strong></p>
+        <p class="drop-hint">Invoice, patient record, insurance form, treatment summary, payslip</p>
+      </div>
+      <div id="file-list"></div>
+    </div>
+
+    <button type="button" class="submit-btn" id="submitBtn">Process claim</button>
+
+    <div class="status-bar" id="status-bar">
+      <span id="status-text">Ready to submit.</span>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+</div>
+
+<script>
+  const fileInput    = document.getElementById('files');
+  const fileList     = document.getElementById('file-list');
+  const dropZone     = document.getElementById('drop-zone');
+  const submitBtn    = document.getElementById('submitBtn');
+  const statusBar    = document.getElementById('status-bar');
+  const statusText   = document.getElementById('status-text');
+  const result       = document.getElementById('result');
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+    return (b / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  function renderFileList(files) {
+    fileList.innerHTML = '';
+    Array.from(files).forEach(f => {
+      const chip = document.createElement('div');
+      chip.className = 'file-chip';
+      chip.innerHTML = `<span class="file-name">${f.name}</span><span class="file-size">${formatBytes(f.size)}</span>`;
+      fileList.appendChild(chip);
+    });
+  }
+
+  fileInput.addEventListener('change', () => renderFileList(fileInput.files));
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const dt = e.dataTransfer;
+    if (dt && dt.files.length) {
+      fileInput.files = dt.files;
+      renderFileList(dt.files);
     }
+  });
 
-    function renderUserResult(payload) {
-      result.innerHTML = `<pre>${JSON.stringify(payload, null, 2)}</pre>`;
+  function setStatus(msg, mode) {
+    statusText.textContent = msg;
+    statusBar.className = 'status-bar' + (mode ? ' ' + mode : '');
+    // show/hide spinner
+    const existing = statusBar.querySelector('.spinner');
+    if (mode === 'processing') {
+      if (!existing) {
+        const s = document.createElement('div');
+        s.className = 'spinner';
+        statusBar.prepend(s);
+      }
+    } else {
+      if (existing) existing.remove();
     }
+  }
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('files');
-      if (!input.files.length) {
-        alert('Please select at least one PDF');
+  submitBtn.addEventListener('click', async () => {
+    const name  = document.getElementById('claimant_name').value.trim();
+    const email = document.getElementById('claimant_email').value.trim();
+
+    if (!name || !email) { setStatus('Please fill in your name and email.', 'error-state'); return; }
+    if (!fileInput.files.length) { setStatus('Please select at least one PDF.', 'error-state'); return; }
+
+    const fd = new FormData();
+    fd.append('claimant_name',  name);
+    fd.append('claimant_email', email);
+    for (const f of fileInput.files) fd.append('documents', f, f.name);
+
+    submitBtn.disabled = true;
+    result.innerHTML   = '';
+    setStatus('Uploading documents...', 'processing');
+
+    try {
+      const res = await fetch('/process-claim', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const txt = await res.text();
+        setStatus('Upload failed — ' + res.status, 'error-state');
+        result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${txt}</pre>`;
         return;
       }
-      const fd = new FormData();
-      fd.append('claimant_name', document.getElementById('claimant_name').value);
-      fd.append('claimant_email', document.getElementById('claimant_email').value);
-      for (const f of input.files) fd.append('documents', f, f.name);
 
-      submitBtn.disabled = true;
-      result.innerHTML = '<em>Processing…</em>';
-      updateStatus('Uploading documents...');
-      try {
-        const res = await fetch('/process-claim', { method: 'POST', body: fd });
-        if (!res.ok) {
-          const txt = await res.text();
-          result.innerHTML = `<pre style="color:crimson">HTTP ${res.status}\n${txt}</pre>`;
-          return;
-        }
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer    = '';
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop() || '';
 
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split('\n\n');
-          buffer = events.pop() || '';
+        for (const block of events) {
+          const line = block.split('\n').find(l => l.startsWith('data: '));
+          if (!line) continue;
+          const event = JSON.parse(line.slice(6));
 
-          for (const eventBlock of events) {
-            const line = eventBlock.split('\n').find((entry) => entry.startsWith('data: '));
-            if (!line) continue;
-
-            const event = JSON.parse(line.slice(6));
-            if (event.stage === 'parsing') {
-              updateStatus('📄 Extracting and classifying documents...');
-                } else if (event.stage === 'analysing') {
-                  updateStatus('⚖️ Running approval and risk analysis...');
-                } else if (event.stage === 'error') {
-                  updateStatus('Review required.');
-                  result.innerHTML = `<pre style="color:crimson">${JSON.stringify(event, null, 2)}</pre>`;
-                } else if (event.stage === 'complete') {
-                  updateStatus('Done.');
-                  // Post the user-facing payload to the server to render the status card
-                  try {
-                    const renderRes = await fetch('/render-user-result', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(event)
-                    });
-                    const html = await renderRes.text();
-                    result.innerHTML = html;
-                  } catch (err) {
-                    // fallback to raw JSON
-                    result.innerHTML = `<pre>${JSON.stringify(event, null, 2)}</pre>`;
-                  }
-                }
+          if (event.stage === 'uploading') {
+            setStatus('Uploading documents to secure storage...', 'processing');
+          } else if (event.stage === 'parsing') {
+            setStatus('Classifying and extracting document fields...', 'processing');
+          } else if (event.stage === 'analysing') {
+            setStatus('Running approval and risk analysis...', 'processing');
+          } else if (event.stage === 'error') {
+            setStatus('Processing error — please try again.', 'error-state');
+            result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${JSON.stringify(event, null, 2)}</pre>`;
+          } else if (event.stage === 'complete') {
+            setStatus('Done.');
+            try {
+              const renderRes = await fetch('/render-user-result', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(event)
+              });
+              const html = await renderRes.text();
+              result.innerHTML = html;
+            } catch {
+              result.innerHTML = `<pre style="font-size:13px;margin-top:12px">${JSON.stringify(event.user_result, null, 2)}</pre>`;
+            }
           }
         }
-      } catch (err) {
-        result.innerHTML = `<pre style="color:crimson">${err.toString()}</pre>`;
-        updateStatus('Failed.');
-      } finally {
-        submitBtn.disabled = false;
       }
-    });
-  </script>
+    } catch (err) {
+      setStatus('Connection error — ' + err.message, 'error-state');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
 </body>
 </html>

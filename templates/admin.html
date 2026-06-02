@@ -1,127 +1,724 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Admin Review Queue</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Queue — Meridian Health Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --bg: #0f1722;
-      --card: #071021;
-      --muted: #8b98a6;
-      --text: #e6f0f3;
-      --accent: #00c2a8;
-      --line: rgba(255,255,255,0.08);
-    }
-    body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
-    .wrap { max-width: 1180px; margin: 28px auto; padding: 0 20px 28px; }
-    .hero { background: var(--card); border-radius: 16px; padding: 22px; margin-bottom: 16px; }
-    .hero h1 { margin: 0 0 8px; font-size: 26px; }
-    .hero p { margin: 0; color: var(--muted); line-height: 1.5; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
-    .card { background: var(--card); border-radius: 16px; padding: 22px; }
-    .card h2 { margin: 0 0 10px; font-size: 18px; }
-    .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
-    .section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
-    .section-label { color: var(--muted); font-size: 13px; font-weight: bold; margin-bottom: 8px; }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chip { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; font-size: 13px; color: var(--text); background: rgba(255,255,255,0.03); }
-    .muted { color: var(--muted); font-size: 13px; }
-    .badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px; background: rgba(0,194,168,0.12); color: var(--accent); }
-    .empty { padding: 24px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); background: rgba(255,255,255,0.02); }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* PDF links — Supabase signed URLs */
-    .doc-list { margin: 0; padding: 0; list-style: none; }
-    .doc-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-    .doc-item:last-child { border-bottom: none; }
-    .doc-link { color: #8fd3ff; text-decoration: none; font-size: 13px; flex: 1; }
-    .doc-link:hover { text-decoration: underline; }
-    .doc-icon { font-size: 14px; color: var(--muted); }
-    .doc-no-url { color: var(--muted); font-size: 13px; font-style: italic; }
+    :root {
+      --teal:       #568A97;
+      --teal-dark:  #3f6e7b;
+      --teal-pale:  #e8f2f4;
+      --sand:       #D5C6B9;
+      --sand-pale:  #ede7e0;
+      --cream:      #F0E9D8;
+      --mauve:      #947D9E;
+      --mauve-pale: #f2eef5;
+      --ink:        #2a2622;
+      --ink-mid:    #5a524a;
+      --ink-light:  #8a8078;
+      --white:      #ffffff;
+      --border:     rgba(213,198,185,0.5);
+
+      --high-bg:    #fbeef2;
+      --high-text:  #8b1a38;
+      --high-border:#e8b4c4;
+      --med-bg:     #fdf4e7;
+      --med-text:   #7a4f00;
+      --med-border: #e8d0a0;
+      --low-bg:     #eaf8f1;
+      --low-text:   #1e6b5a;
+      --low-border: #a8ddc8;
+    }
+
+    html, body {
+      min-height: 100%;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+    }
+
+    /* ── top nav ── */
+    .nav {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 18px;
+      color: var(--teal);
+      letter-spacing: -0.01em;
+    }
+    .nav-meta {
+      font-size: 12.5px;
+      color: var(--ink-light);
+    }
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: var(--teal-pale);
+      color: var(--teal-dark);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* ── page shell ── */
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 40px 40px 80px;
+    }
+
+    /* ── page header ── */
+    .page-header {
+      margin-bottom: 36px;
+    }
+    .page-header h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 34px;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      font-size: 14px;
+      color: var(--ink-light);
+    }
+
+    /* ── stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+    .stat-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: 22px 24px;
+      border: 1px solid var(--border);
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      margin-bottom: 8px;
+    }
+    .stat-value {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 36px;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--ink-light);
+      margin-top: 4px;
+    }
+
+    /* ── case grid ── */
+    .case-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+
+    /* ── case card ── */
+    .case-card {
+      background: var(--white);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s, border-color 0.2s;
+    }
+    .case-card:hover {
+      box-shadow: 0 8px 32px rgba(42,38,34,0.10);
+      transform: translateY(-2px);
+      border-color: var(--sand);
+    }
+
+    .card-risk-bar {
+      height: 4px;
+      width: 100%;
+    }
+    .risk-HIGH   { background: linear-gradient(90deg, #c04070, #d06090); }
+    .risk-MEDIUM { background: linear-gradient(90deg, #c4a86a, #d4b87a); }
+    .risk-LOW    { background: linear-gradient(90deg, var(--teal), #7ab8c4); }
+
+    .card-inner {
+      padding: 22px 24px 20px;
+    }
+
+    /* card top row */
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 12px;
+    }
+    .claimant-name {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 19px;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+    .claimant-email {
+      font-size: 12.5px;
+      color: var(--ink-light);
+      margin-top: 3px;
+    }
+
+    /* confidence badge */
+    .confidence-badge {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .confidence-ring {
+      width: 48px;
+      height: 48px;
+    }
+    .confidence-ring circle {
+      fill: none;
+      stroke-linecap: round;
+    }
+    .ring-bg   { stroke: var(--sand-pale); stroke-width: 4; }
+    .ring-fill { stroke-width: 4; stroke-dasharray: 113; transition: stroke-dashoffset 0.6s ease; }
+    .ring-fill-HIGH   { stroke: var(--teal); }
+    .ring-fill-MEDIUM { stroke: #c4a86a; }
+    .ring-fill-LOW    { stroke: #c04070; }
+    .confidence-pct {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--ink-mid);
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    /* risk pill */
+    .risk-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .pill-HIGH   { background: var(--high-bg);  color: var(--high-text);  border: 1px solid var(--high-border); }
+    .pill-MEDIUM { background: var(--med-bg);   color: var(--med-text);   border: 1px solid var(--med-border); }
+    .pill-LOW    { background: var(--low-bg);   color: var(--low-text);   border: 1px solid var(--low-border); }
+
+    /* reasoning excerpt */
+    .card-reason {
+      font-size: 13px;
+      color: var(--ink-mid);
+      line-height: 1.55;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    /* flag counts */
+    .flag-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .flag-chip {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .flag-HIGH   { background: var(--high-bg); color: var(--high-text); }
+    .flag-MEDIUM { background: var(--med-bg);  color: var(--med-text); }
+    .flag-LOW    { background: var(--low-bg);  color: var(--low-text); }
+
+    /* card footer */
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 14px;
+      border-top: 1px solid var(--sand-pale);
+      font-size: 12px;
+      color: var(--ink-light);
+    }
+    .doc-count { }
+    .submitted-at { }
+
+    /* ── modal overlay ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(42,38,34,0.45);
+      z-index: 200;
+      overflow-y: auto;
+      padding: 40px 20px;
+    }
+    .modal-overlay.open { display: flex; align-items: flex-start; justify-content: center; }
+
+    .modal {
+      width: 100%;
+      max-width: 680px;
+      background: var(--white);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 24px 64px rgba(42,38,34,0.18);
+      animation: slideUp 0.2s ease;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 28px 32px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .modal-name {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 26px;
+      color: var(--ink);
+      margin-bottom: 4px;
+    }
+    .modal-meta {
+      font-size: 13px;
+      color: var(--ink-light);
+    }
+    .modal-close {
+      background: var(--sand-pale);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: var(--ink-mid);
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-top: 4px;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: var(--sand); }
+
+    .modal-body {
+      padding: 28px 32px 32px;
+    }
+
+    .modal-section {
+      margin-bottom: 24px;
+    }
+    .modal-section:last-child { margin-bottom: 0; }
+
+    .section-heading {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      margin-bottom: 10px;
+    }
+
+    /* flags in modal */
+    .flag-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .flag-item {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid;
+      font-size: 13.5px;
+    }
+    .flag-item.sev-HIGH   { background: var(--high-bg); border-color: var(--high-border); }
+    .flag-item.sev-MEDIUM { background: var(--med-bg);  border-color: var(--med-border); }
+    .flag-item.sev-LOW    { background: var(--low-bg);  border-color: var(--low-border); }
+
+    .flag-item-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .flag-sev-label {
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .flag-sev-HIGH   { color: var(--high-text); }
+    .flag-sev-MEDIUM { color: var(--med-text); }
+    .flag-sev-LOW    { color: var(--low-text); }
+    .flag-issue { color: var(--ink); font-weight: 400; line-height: 1.45; }
+    .flag-rec {
+      font-size: 12px;
+      color: var(--ink-mid);
+      margin-top: 5px;
+    }
+
+    /* chips for verified/unverified */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .chip {
+      padding: 6px 12px;
+      background: var(--sand-pale);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--ink-mid);
+      border: 1px solid var(--border);
+    }
+
+    /* documents list */
+    .doc-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .doc-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--teal-pale);
+      border-radius: 8px;
+    }
+    .doc-name {
+      font-size: 13px;
+      color: var(--ink);
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .doc-link {
+      font-size: 12px;
+      color: var(--teal-dark);
+      text-decoration: none;
+      font-weight: 500;
+      flex-shrink: 0;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .doc-link:hover { border-color: var(--teal-dark); }
+    .doc-unavailable {
+      font-size: 12px;
+      color: var(--ink-light);
+      font-style: italic;
+      flex-shrink: 0;
+    }
+
+    /* empty state */
+    .empty {
+      text-align: center;
+      padding: 80px 40px;
+    }
+    .empty-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 24px;
+      color: var(--ink);
+      margin-bottom: 10px;
+    }
+    .empty-sub {
+      font-size: 14px;
+      color: var(--ink-light);
+    }
+
+    @media (max-width: 600px) {
+      .page { padding: 24px 16px 60px; }
+      .nav  { padding: 0 20px; }
+      .stats-row { grid-template-columns: 1fr; }
+      .modal-body { padding: 20px; }
+      .modal-header { padding: 20px; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="hero">
-      <h1>Admin manual review queue</h1>
-      <p>Claims flagged for manual review. Documents link directly to Supabase Storage (signed URLs, valid 7 days).</p>
-    </div>
 
-    {% if claims %}
-    <div class="grid">
-      {% for claim in claims %}
-      <div class="card">
-        <div class="badge">PENDING MANUAL APPROVAL</div>
-        <h2>{{ claim.claimant_name }}</h2>
-        <div class="meta">
-          {{ claim.claimant_email }} &nbsp;·&nbsp;
-          {{ claim.claim_id }} &nbsp;·&nbsp;
-          {{ claim.submitted_at }}
-        </div>
-
-        <div class="section">
-          <div class="section-label">Why not auto-approved</div>
-          <div class="muted">{{ claim.why_not_auto_approved }}</div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Verified</div>
-          <div class="chips">
-            {% for item in claim.verified_things %}
-              <span class="chip">{{ item }}</span>
-            {% else %}
-              <span class="muted">No verified items recorded.</span>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Needs verification</div>
-          <div class="chips">
-            {% for item in claim.unverified_things %}
-              <span class="chip">{{ item }}</span>
-            {% else %}
-              <span class="muted">No unverified items recorded.</span>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Next steps</div>
-          <div class="chips">
-            {% for step in claim.next_steps %}
-              <span class="chip">{{ step }}</span>
-            {% else %}
-              <span class="muted">No next steps generated.</span>
-            {% endfor %}
-          </div>
-        </div>
-
-        <div class="section">
-          <div class="section-label">Uploaded documents</div>
-          <ul class="doc-list">
-            {% for doc in claim.documents %}
-              <li class="doc-item">
-                <span class="doc-icon">📄</span>
-                {% if doc.signed_url %}
-                  <a class="doc-link" href="{{ doc.signed_url }}" target="_blank" rel="noreferrer">
-                    {{ doc.name }}
-                  </a>
-                {% else %}
-                  <span class="doc-no-url">{{ doc.name }} — URL unavailable</span>
-                {% endif %}
-              </li>
-            {% else %}
-              <li><span class="muted">No documents on record.</span></li>
-            {% endfor %}
-          </ul>
-        </div>
-
-      </div>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="empty">No claims are waiting for manual review.</div>
-    {% endif %}
+<!-- nav -->
+<nav class="nav">
+  <div class="nav-brand">Meridian Health</div>
+  <div>
+    <span class="nav-badge">Admin</span>
+    <span class="nav-meta" style="margin-left:14px">Review Queue</span>
   </div>
+</nav>
+
+<div class="page">
+
+  <!-- header -->
+  <div class="page-header">
+    <h1>Manual review queue</h1>
+    <p>Claims that require human verification before a final decision can be issued.</p>
+  </div>
+
+  <!-- stats -->
+  {% set total   = claims | length %}
+  {% set high_ct = claims | selectattr('unverified_things') | list | length %}
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Pending review</div>
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-sub">cases awaiting decision</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">With HIGH flags</div>
+      <div class="stat-value" style="color:var(--high-text)">
+        {{ claims | selectattr('unverified_things') | list | length }}
+      </div>
+      <div class="stat-sub">require priority attention</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Documents linked</div>
+      <div class="stat-value" style="color:var(--teal)">
+        {% set ns = namespace(n=0) %}
+        {% for c in claims %}{% set ns.n = ns.n + (c.documents | length) %}{% endfor %}
+        {{ ns.n }}
+      </div>
+      <div class="stat-sub">PDFs across all cases</div>
+    </div>
+  </div>
+
+  <!-- grid -->
+  {% if claims %}
+  <div class="case-grid">
+    {% for claim in claims %}
+
+    {# Pull flag summary from result_json if available #}
+    {% set triage = claim.get('result_json', {}).get('triage_card', {}) if claim.get('result_json') else {} %}
+    {% set flag_summary = triage.get('flag_summary', {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}) %}
+    {% set conf_score   = triage.get('confidence_score', 0.5) %}
+    {% set conf_tier    = triage.get('confidence_tier', 'MEDIUM') %}
+    {% set overall_risk = triage.get('overall_risk') or (claim.get('result_json', {}).get('prosecutor', {}) or {}).get('overall_risk', 'MEDIUM') %}
+    {% set conf_pct     = (conf_score * 100) | int %}
+    {# SVG ring: circumference 113.1, offset = 113.1 * (1 - conf_score) #}
+    {% set ring_offset  = (113.1 * (1 - conf_score)) | round(1) %}
+
+    <div class="case-card" onclick="openModal('modal-{{ loop.index }}')">
+      <div class="card-risk-bar risk-{{ overall_risk if overall_risk in ['HIGH','MEDIUM','LOW'] else 'MEDIUM' }}"></div>
+
+      <div class="card-inner">
+        <div class="card-top">
+          <div>
+            <div class="claimant-name">{{ claim.claimant_name }}</div>
+            <div class="claimant-email">{{ claim.claimant_email }}</div>
+          </div>
+
+          <!-- confidence ring -->
+          <div class="confidence-badge">
+            <svg class="confidence-ring" viewBox="0 0 40 40">
+              <circle class="ring-bg" cx="20" cy="20" r="18"/>
+              <circle class="ring-fill ring-fill-{{ conf_tier }}"
+                cx="20" cy="20" r="18"
+                stroke-dasharray="113.1"
+                stroke-dashoffset="{{ ring_offset }}"
+                transform="rotate(-90 20 20)"/>
+              <text x="20" y="24" text-anchor="middle"
+                style="font-family:'DM Sans',sans-serif;font-size:9px;font-weight:500;fill:#5a524a">
+                {{ conf_pct }}%
+              </text>
+            </svg>
+            <div class="confidence-pct">confidence</div>
+          </div>
+        </div>
+
+        <div class="risk-pill pill-{{ overall_risk if overall_risk in ['HIGH','MEDIUM','LOW'] else 'MEDIUM' }}">
+          {{ overall_risk if overall_risk else 'MEDIUM' }} risk
+        </div>
+
+        <p class="card-reason">{{ claim.why_not_auto_approved }}</p>
+
+        <div class="flag-row">
+          {% if flag_summary.get('HIGH', 0) > 0 %}
+          <span class="flag-chip flag-HIGH">{{ flag_summary.HIGH }} High</span>
+          {% endif %}
+          {% if flag_summary.get('MEDIUM', 0) > 0 %}
+          <span class="flag-chip flag-MEDIUM">{{ flag_summary.MEDIUM }} Medium</span>
+          {% endif %}
+          {% if flag_summary.get('LOW', 0) > 0 %}
+          <span class="flag-chip flag-LOW">{{ flag_summary.LOW }} Low</span>
+          {% endif %}
+          {% if not flag_summary.get('HIGH') and not flag_summary.get('MEDIUM') and not flag_summary.get('LOW') %}
+          <span class="flag-chip flag-LOW">No flags</span>
+          {% endif %}
+        </div>
+
+        <div class="card-footer">
+          <span class="doc-count">{{ claim.documents | length }} document{{ 's' if claim.documents | length != 1 }}</span>
+          <span class="submitted-at">{{ claim.submitted_at | string | truncate(16, True, '') if claim.submitted_at else '' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- modal for this claim -->
+    <div class="modal-overlay" id="modal-{{ loop.index }}" onclick="closeOnOverlay(event, this)">
+      <div class="modal">
+        <div class="modal-header">
+          <div>
+            <div class="modal-name">{{ claim.claimant_name }}</div>
+            <div class="modal-meta">
+              {{ claim.claimant_email }}
+              &nbsp;&middot;&nbsp;
+              {{ claim.claim_id }}
+              &nbsp;&middot;&nbsp;
+              {{ claim.submitted_at | string | truncate(16, True, '') if claim.submitted_at else 'Unknown date' }}
+            </div>
+          </div>
+          <button class="modal-close" onclick="closeModal('modal-{{ loop.index }}')">Close</button>
+        </div>
+
+        <div class="modal-body">
+
+          <!-- why not approved -->
+          <div class="modal-section">
+            <div class="section-heading">Why escalated</div>
+            <p style="font-size:14px;color:var(--ink-mid);line-height:1.6">{{ claim.why_not_auto_approved }}</p>
+          </div>
+
+          <!-- flags -->
+          {% set flags = triage.get('key_risk_factors', claim.unverified_things or []) %}
+          {% if flags %}
+          <div class="modal-section">
+            <div class="section-heading">Risk factors</div>
+            <div class="flag-list">
+              {% for item in flags %}
+              <div class="flag-item sev-MEDIUM">
+                <div class="flag-issue">{{ item }}</div>
+              </div>
+              {% endfor %}
+
+              {# If we have full flag objects from the prosecutor, show them instead #}
+              {% set full_flags = (claim.get('result_json', {}).get('prosecutor', {}) or {}).get('flags', []) %}
+              {% if full_flags %}
+              <!-- detailed flags from prosecutor -->
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- verified things -->
+          {% if claim.verified_things %}
+          <div class="modal-section">
+            <div class="section-heading">Verified</div>
+            <div class="chip-row">
+              {% for item in claim.verified_things %}
+              <span class="chip">{{ item }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- next steps / checklist -->
+          {% if claim.next_steps %}
+          <div class="modal-section">
+            <div class="section-heading">Checklist for reviewer</div>
+            <div class="flag-list">
+              {% for step in claim.next_steps %}
+              <div class="flag-item sev-LOW">
+                <div class="flag-issue">{{ step }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- documents -->
+          <div class="modal-section">
+            <div class="section-heading">Uploaded documents</div>
+            {% if claim.documents %}
+            <div class="doc-list">
+              {% for doc in claim.documents %}
+              <div class="doc-row">
+                <span class="doc-name">{{ doc.name }}</span>
+                {% if doc.signed_url %}
+                <a class="doc-link" href="{{ doc.signed_url }}" target="_blank" rel="noreferrer">View PDF</a>
+                {% else %}
+                <span class="doc-unavailable">URL unavailable</span>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p style="font-size:13px;color:var(--ink-light)">No documents on record.</p>
+            {% endif %}
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty">
+    <div class="empty-title">Queue is clear</div>
+    <div class="empty-sub">No claims are waiting for manual review.</div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function closeOnOverlay(e, overlay) {
+    if (e.target === overlay) {
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.modal-overlay.open').forEach(m => {
+        m.classList.remove('open');
+        document.body.style.overflow = '';
+      });
+    }
+  });
+</script>
 </body>
 </html>
