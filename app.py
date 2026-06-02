@@ -153,6 +153,91 @@ def process_claim():
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
+@app.route('/render-triage', methods=['POST'])
+def render_triage():
+    """Render the triage summary HTML from the triage payload posted by the frontend."""
+    payload = request.get_json(force=True)
+    triage = payload.get('triage_card', {}) if isinstance(payload, dict) else {}
+    defender = payload.get('defender', {}) if isinstance(payload, dict) else {}
+    prosecutor = payload.get('prosecutor', {}) if isinstance(payload, dict) else {}
+    documents = payload.get('documents', []) if isinstance(payload, dict) else []
+
+    # Build a combined text for simple heuristics
+    combined = json.dumps([triage, defender, prosecutor])
+
+    # Primary reason: prefer an explicit summary, else fallback
+    primary_reason = triage.get('summary') or triage.get('reason') or (
+        'See flagged issues in the summary below.' if combined else 'No summary available.'
+    )
+
+    # Secondary reasons heuristics
+    secs = []
+    if 'invoice' in combined.lower():
+        secs.append('Possible pre-treatment billing')
+    if 'physician' in combined.lower() or 'network' in combined.lower():
+        secs.append('Attending physician appears out-of-network')
+    if 'dob' in combined.lower() or 'date of birth' in combined.lower():
+        secs.append('DOB mismatch across documents')
+    secondary_reasons = '; '.join(secs) if secs else '—'
+
+    # Evidence flags: try to extract simple key=value pairs from provided documents
+    evidence_flags = []
+    for d in documents:
+        if isinstance(d, dict):
+            fname = d.get('filename') or d.get('name') or str(d)
+            # attempt to include a few common fields if present
+            parts = []
+            for k in ('invoice_date', 'treatment_date', 'dob', 'amount'):
+                if k in d:
+                    parts.append(f"{k} = {d[k]}")
+            if parts:
+                evidence_flags.append(f"{fname}: {'; '.join(parts)}")
+            else:
+                evidence_flags.append(fname)
+        else:
+            evidence_flags.append(str(d))
+
+    # Steps: build 3 short actionable items based on flags
+    steps = []
+    if any('invoice' in f.lower() for f in evidence_flags):
+        steps.append({'title': 'Contact provider billing to confirm invoice date.', 'eta': '3–6 min', 'impact': 'high'})
+    if any('dob' in f.lower() for f in evidence_flags):
+        steps.append({'title': "Verify patient's DOB against ID on file.", 'eta': '2–4 min', 'impact': 'medium'})
+    if any('physician' in f.lower() or 'network' in combined.lower() for f in evidence_flags):
+        steps.append({'title': 'Check out-of-network benefits and co-pay.', 'eta': '4–8 min', 'impact': 'low'})
+    if not steps:
+        steps = [{'title': 'Review flagged items and resolve outstanding inconsistencies.', 'eta': '5–10 min', 'impact': 'medium'}]
+
+    claim_ref = triage.get('claim_ref') or triage.get('id') or '—'
+    est_review_time = triage.get('estimated_review_time') or '7 min'
+    confidence_value = triage.get('confidence')
+    if confidence_value is None:
+        # try prosecutor or defender
+        confidence_value = prosecutor.get('confidence') if isinstance(prosecutor, dict) else None
+    confidence_text = 'Low'
+    if isinstance(confidence_value, (int, float)):
+        confidence_value = f"{confidence_value:.2f}"
+        if float(confidence_value) >= 0.7:
+            confidence_text = 'High'
+        elif float(confidence_value) >= 0.4:
+            confidence_text = 'Medium'
+        else:
+            confidence_text = 'Low'
+    else:
+        confidence_value = '--'
+
+    return render_template('verification_info.html',
+                           primary_reason=primary_reason,
+                           secondary_reasons=secondary_reasons,
+                           evidence_flags=evidence_flags,
+                           steps=steps,
+                           documents=[(d.get('filename') if isinstance(d, dict) else str(d)) for d in documents],
+                           claim_ref=claim_ref,
+                           est_review_time=est_review_time,
+                           confidence_text=confidence_text,
+                           confidence_value=confidence_value)
+
+
 @app.route('/health')
 def health():
     """Simple health check for deployment monitoring."""
