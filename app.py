@@ -29,6 +29,14 @@ from parser import parse_document
 from defender import run_defender
 from prosecutor import run_prosecutor, merge_hard_rule_flags
 from synthesiser import synthesise
+from db import (
+    create_claim,
+    create_claimant,
+    get_all_claims,
+    save_error,
+    save_result,
+    set_claim_status,
+)
 
 load_dotenv()
 
@@ -37,7 +45,6 @@ app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB total upload limit
 
 ALLOWED_EXTENSIONS = {"pdf"}
 MAX_FILES = 10
-CLAIM_REVIEW_QUEUE = []
 
 
 def _sse_event(payload: dict) -> str:
@@ -89,43 +96,44 @@ def _build_user_result(triage_card: dict, claim_id: str) -> dict:
     }
 
 
-def _build_admin_record(claim_id: str, claimant_name: str, claimant_email: str,
-                        triage_card: dict, defender: dict, prosecutor: dict,
-                        parsed_docs: list, skipped: list, documents: list) -> dict:
-    verdict = triage_card.get('verdict')
-    user_result = _build_user_result(triage_card, claim_id)
-    pending_manual = verdict == 'MANUAL_REVIEW'
+def _build_admin_view(claim: dict) -> dict:
+    result_json = claim.get('result_json') or {}
+    triage_card = result_json.get('triage_card') if isinstance(result_json, dict) else {}
+    if not isinstance(triage_card, dict):
+        triage_card = {}
+
+    documents_source = claim.get('documents_json') or triage_card.get('documents_processed') or []
+    documents = []
+    for item in documents_source:
+        if isinstance(item, dict):
+            documents.append(item.get('filename') or item.get('name') or 'Unnamed PDF')
+        else:
+            documents.append(str(item))
+
+    drive_folder_id = claim.get('drive_folder_id')
+    drive_view_url = f"https://drive.google.com/drive/folders/{drive_folder_id}" if drive_folder_id else None
+
+    next_steps = []
+    for step in triage_card.get('human_checklist', []):
+        if isinstance(step, dict) and step.get('action'):
+            next_steps.append(step.get('action'))
+
+    verified_things = triage_card.get('key_approval_factors') or _text_list((result_json.get('defender') or {}).get('approval_factors'))
+    unverified_things = triage_card.get('key_risk_factors') or _text_list((result_json.get('prosecutor') or {}).get('flags'))
 
     return {
-        'claim_id': claim_id,
-        'submitted_at': _utc_now_iso(),
-        'claimant_name': claimant_name or 'Unknown',
-        'claimant_email': claimant_email or 'Unknown',
+        'claim_id': claim.get('id'),
+        'claimant_name': claim.get('full_name') or 'Unknown',
+        'claimant_email': claim.get('email') or 'Unknown',
+        'submitted_at': claim.get('submitted_at'),
+        'status': claim.get('status'),
+        'verdict': claim.get('verdict'),
+        'why_not_auto_approved': triage_card.get('verdict_reasoning') or triage_card.get('escalation_reason') or claim.get('error_log') or 'Manual review required.',
+        'verified_things': verified_things if isinstance(verified_things, list) else _text_list([verified_things]),
+        'unverified_things': unverified_things if isinstance(unverified_things, list) else _text_list([unverified_things]),
+        'next_steps': next_steps,
         'documents': documents,
-        'parsed_documents': [
-            {
-                'filename': doc.get('filename'),
-                'pages': doc.get('pages'),
-                'classification': doc.get('classification'),
-                'unusable': doc.get('unusable', False),
-            }
-            for doc in parsed_docs
-        ],
-        'skipped_documents': skipped,
-        'verdict': verdict,
-        'user_result': user_result,
-        'why_not_auto_approved': triage_card.get('verdict_reasoning') or triage_card.get('escalation_reason') or 'Manual review required.',
-        'verified_things': _text_list(defender.get('approval_factors')),
-        'unverified_things': _text_list(prosecutor.get('flags')),
-        'next_steps': [
-            item.get('action') if isinstance(item, dict) else str(item)
-            for item in triage_card.get('human_checklist', [])
-            if item
-        ],
-        'claim_summary': triage_card.get('flag_summary', {}),
-        'documents_processed': triage_card.get('documents_processed', []),
-        'pending_manual': pending_manual,
-        'drive_view_url': None,
+        'drive_view_url': drive_view_url,
     }
 
 
@@ -157,11 +165,18 @@ def process_claim():
     if non_pdf:
         return jsonify({"error": f"Only PDF files accepted. Rejected: {', '.join(non_pdf)}"}), 400
 
+    claimant_name = request.form.get('claimant_name', '').strip()
+    claimant_email = request.form.get('claimant_email', '').strip()
+
+    if not claimant_name or not claimant_email:
+        return jsonify({"error": "Claimant name and email are required."}), 400
+
+    claimant_id = create_claimant(claimant_name, claimant_email)
+    claim_id = create_claim(claimant_id)
+
     # ── Stage 1: Extract text from all PDFs ───────────────────────────────────
     raw_docs = []
     skipped = []
-    claimant_name = request.form.get('claimant_name', '').strip()
-    claimant_email = request.form.get('claimant_email', '').strip()
 
     for f in files:
         extraction = extract_text(f)
@@ -178,6 +193,7 @@ def process_claim():
             })
 
     if not raw_docs:
+        save_error(claim_id, "Could not extract text from any uploaded files.")
         return jsonify({
             "error": "Could not extract text from any uploaded files.",
             "detail": "All files appear to be scanned image PDFs or are corrupted. "
@@ -186,69 +202,74 @@ def process_claim():
         }), 422
 
     def generate():
-        yield _sse_event({
-            "stage": "parsing",
-            "message": f"Reading {len(raw_docs)} document(s)..."
-        })
+        try:
+            set_claim_status(claim_id, 'processing')
 
-        # Stage 2: Parse documents in parallel because each document is independent.
-        with ThreadPoolExecutor() as executor:
-            parsed_docs = list(executor.map(
-                lambda doc: parse_document(doc["text"], doc["filename"]),
-                raw_docs
-            ))
+            yield _sse_event({
+                "stage": "parsing",
+                "message": f"Reading {len(raw_docs)} document(s)..."
+            })
 
-        # Check we have at least one usable document.
-        usable = [d for d in parsed_docs if not d.get("unusable")]
-        if not usable:
+            # Stage 2: Parse documents in parallel because each document is independent.
+            with ThreadPoolExecutor() as executor:
+                parsed_docs = list(executor.map(
+                    lambda doc: parse_document(doc["text"], doc["filename"]),
+                    raw_docs
+                ))
+
+            # Check we have at least one usable document.
+            usable = [d for d in parsed_docs if not d.get("unusable")]
+            if not usable:
+                error_message = "No documents could be classified. Manual review required."
+                save_error(claim_id, error_message)
+                yield _sse_event({
+                    "stage": "error",
+                    "error": error_message,
+                    "documents": parsed_docs
+                })
+                return
+
+            yield _sse_event({
+                "stage": "analysing",
+                "message": "Running approval analysis..."
+            })
+
+            # Stage 3: Defender and prosecutor do not depend on each other.
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                def_future = executor.submit(run_defender, parsed_docs, POLICY_RULES)
+                pros_future = executor.submit(run_prosecutor, parsed_docs, POLICY_RULES)
+                defender_output = def_future.result()
+                prosecutor_output = pros_future.result()
+
+            # Hard rule validation (deterministic, non-AI).
+            hard_flags = run_hard_rules(parsed_docs)
+            prosecutor_output = merge_hard_rule_flags(prosecutor_output, hard_flags)
+
+            # Stage 4: Python synthesis — no AI.
+            triage_card = synthesise(defender_output, prosecutor_output, parsed_docs)
+            internal_result = {
+                "triage_card": triage_card,
+                "defender": defender_output,
+                "prosecutor": prosecutor_output,
+                "documents": parsed_docs,
+                "skipped": skipped,
+            }
+            save_result(claim_id, internal_result)
+
+            user_result = _build_user_result(triage_card, claim_id)
+
+            yield _sse_event({
+                "stage": "complete",
+                "claim_id": claim_id,
+                "user_result": user_result
+            })
+        except Exception as exc:
+            save_error(claim_id, str(exc))
             yield _sse_event({
                 "stage": "error",
-                "error": "No documents could be classified. Manual review required.",
-                "documents": parsed_docs
+                "error": str(exc),
+                "claim_id": claim_id
             })
-            return
-
-        yield _sse_event({
-            "stage": "analysing",
-            "message": "Running approval analysis..."
-        })
-
-        # Stage 3: Defender and prosecutor do not depend on each other.
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            def_future = executor.submit(run_defender, parsed_docs, POLICY_RULES)
-            pros_future = executor.submit(run_prosecutor, parsed_docs, POLICY_RULES)
-            defender_output = def_future.result()
-            prosecutor_output = pros_future.result()
-
-        # Hard rule validation (deterministic, non-AI).
-        hard_flags = run_hard_rules(parsed_docs)
-        prosecutor_output = merge_hard_rule_flags(prosecutor_output, hard_flags)
-
-        # Stage 4: Python synthesis — no AI.
-        triage_card = synthesise(defender_output, prosecutor_output, parsed_docs)
-        claim_id = uuid4().hex[:12]
-        admin_record = _build_admin_record(
-            claim_id=claim_id,
-            claimant_name=claimant_name,
-            claimant_email=claimant_email,
-            triage_card=triage_card,
-            defender=defender_output,
-            prosecutor=prosecutor_output,
-            parsed_docs=parsed_docs,
-            skipped=skipped,
-            documents=[doc.get('filename') for doc in parsed_docs],
-        )
-
-        if admin_record['pending_manual']:
-            CLAIM_REVIEW_QUEUE.append(admin_record)
-
-        user_result = _build_user_result(triage_card, claim_id)
-
-        yield _sse_event({
-            "stage": "complete",
-            "claim_id": claim_id,
-            "user_result": user_result
-        })
 
     return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
@@ -264,7 +285,11 @@ def render_user_result():
 @app.route('/admin')
 def admin_dashboard():
     """Render the manual review queue for admins."""
-    pending_claims = [claim for claim in CLAIM_REVIEW_QUEUE if claim.get('pending_manual')]
+    pending_claims = [
+        _build_admin_view(claim)
+        for claim in get_all_claims()
+        if claim.get('verdict') == 'MANUAL_REVIEW' and not claim.get('worker_decision')
+    ]
     return render_template('admin.html', claims=pending_claims)
 
 
