@@ -59,3 +59,5 @@ Thumbs.db
 # Other
 .Python
 __pycache__/
+ # Google service account key
+ claim-verification-498218-4e12ec42edd2.json
