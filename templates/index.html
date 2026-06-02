@@ -4,9 +4,13 @@
   <meta charset="utf-8">
   <title>Claim Pipeline — Upload PDFs</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 24px; }
-    .box { max-width: 800px; margin: auto; }
-    pre { background:#f6f6f6; padding:12px; overflow:auto }
+    body { font-family: Arial, sans-serif; margin: 24px; background: #f4f7fb; color: #16202a; }
+    .box { max-width: 900px; margin: auto; background: white; padding: 24px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+    pre { background:#f6f6f6; padding:12px; overflow:auto; border-radius: 10px; }
+    .status { margin: 12px 0; padding: 12px 14px; border-radius: 10px; background: #eef4ff; color: #24406d; }
+    .muted { color: #5b6875; }
+    button { padding: 10px 16px; border: 0; border-radius: 10px; background: #1f6feb; color: white; cursor: pointer; }
+    button:disabled { opacity: 0.65; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -17,8 +21,10 @@
     <form id="uploadForm">
       <input type="file" id="files" name="documents" accept="application/pdf" multiple />
       <br/><br/>
-      <button type="submit">Process Claim</button>
+      <button type="submit" id="submitBtn">Process Claim</button>
     </form>
+
+    <div id="status" class="status muted">Idle.</div>
 
     <h2>Result</h2>
     <div id="result">
@@ -29,6 +35,16 @@
   <script>
     const form = document.getElementById('uploadForm');
     const result = document.getElementById('result');
+    const status = document.getElementById('status');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function updateStatus(message) {
+      status.textContent = message;
+    }
+
+    function renderTriageCard(payload) {
+      result.innerHTML = `<pre>${JSON.stringify(payload, null, 2)}</pre>`;
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -40,21 +56,52 @@
       const fd = new FormData();
       for (const f of input.files) fd.append('documents', f, f.name);
 
+      submitBtn.disabled = true;
       result.innerHTML = '<em>Processing…</em>';
+      updateStatus('Uploading documents...');
       try {
         const res = await fetch('/process-claim', { method: 'POST', body: fd });
-        const txt = await res.text();
         if (!res.ok) {
+          const txt = await res.text();
           result.innerHTML = `<pre style="color:crimson">HTTP ${res.status}\n${txt}</pre>`;
           return;
         }
-        // Pretty-print JSON
-        let json;
-        try { json = JSON.parse(txt); }
-        catch { result.innerHTML = `<pre>${txt}</pre>`; return; }
-        result.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
+
+          for (const eventBlock of events) {
+            const line = eventBlock.split('\n').find((entry) => entry.startsWith('data: '));
+            if (!line) continue;
+
+            const event = JSON.parse(line.slice(6));
+            if (event.stage === 'parsing') {
+              updateStatus('📄 Extracting and classifying documents...');
+            } else if (event.stage === 'analysing') {
+              updateStatus('⚖️ Running approval and risk analysis...');
+            } else if (event.stage === 'error') {
+              updateStatus('Review required.');
+              result.innerHTML = `<pre style="color:crimson">${JSON.stringify(event, null, 2)}</pre>`;
+            } else if (event.stage === 'complete') {
+              updateStatus('Done.');
+              renderTriageCard(event);
+            }
+          }
+        }
       } catch (err) {
         result.innerHTML = `<pre style="color:crimson">${err.toString()}</pre>`;
+        updateStatus('Failed.');
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   </script>

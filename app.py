@@ -14,8 +14,11 @@ Pipeline (v2 merged architecture):
         → Return triage card JSON to frontend
 """
 
+import json
 import os
-from flask import Flask, request, jsonify, render_template
+from concurrent.futures import ThreadPoolExecutor
+
+from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 from dotenv import load_dotenv
 
 from pdf_reader import extract_text
@@ -32,6 +35,10 @@ app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB total upload limit
 
 ALLOWED_EXTENSIONS = {"pdf"}
 MAX_FILES = 10
+
+
+def _sse_event(payload: dict) -> str:
+    return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 def allowed_file(filename: str) -> bool:
@@ -92,41 +99,58 @@ def process_claim():
             "skipped": skipped
         }), 422
 
-    # ── Stage 2: Parse each document (classify + extract) ─────────────────────
-    parsed_docs = []
-    for doc in raw_docs:
-        parsed = parse_document(doc["text"], doc["filename"])
-        parsed_docs.append(parsed)
+    def generate():
+        yield _sse_event({
+            "stage": "parsing",
+            "message": f"Reading {len(raw_docs)} document(s)..."
+        })
 
-    # Check we have at least one usable document
-    usable = [d for d in parsed_docs if not d.get("unusable")]
-    if not usable:
-        return jsonify({
-            "error": "No documents could be classified. Manual review required.",
-            "documents": parsed_docs
-        }), 422
+        # Stage 2: Parse documents in parallel because each document is independent.
+        with ThreadPoolExecutor() as executor:
+            parsed_docs = list(executor.map(
+                lambda doc: parse_document(doc["text"], doc["filename"]),
+                raw_docs
+            ))
 
-    # ── Stage 3a: Defender ────────────────────────────────────────────────────
-    defender_output = run_defender(parsed_docs, POLICY_RULES)
+        # Check we have at least one usable document.
+        usable = [d for d in parsed_docs if not d.get("unusable")]
+        if not usable:
+            yield _sse_event({
+                "stage": "error",
+                "error": "No documents could be classified. Manual review required.",
+                "documents": parsed_docs
+            })
+            return
 
-    # ── Stage 3b: Prosecutor ──────────────────────────────────────────────────
-    prosecutor_output = run_prosecutor(parsed_docs, POLICY_RULES)
+        yield _sse_event({
+            "stage": "analysing",
+            "message": "Running approval analysis..."
+        })
 
-    # ── Hard rule validation (deterministic, non-AI) ──────────────────────────
-    hard_flags = run_hard_rules(parsed_docs)
-    prosecutor_output = merge_hard_rule_flags(prosecutor_output, hard_flags)
+        # Stage 3: Defender and prosecutor do not depend on each other.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            def_future = executor.submit(run_defender, parsed_docs, POLICY_RULES)
+            pros_future = executor.submit(run_prosecutor, parsed_docs, POLICY_RULES)
+            defender_output = def_future.result()
+            prosecutor_output = pros_future.result()
 
-    # ── Stage 4: Python synthesis — no AI ─────────────────────────────────────
-    triage_card = synthesise(defender_output, prosecutor_output, parsed_docs)
+        # Hard rule validation (deterministic, non-AI).
+        hard_flags = run_hard_rules(parsed_docs)
+        prosecutor_output = merge_hard_rule_flags(prosecutor_output, hard_flags)
 
-    # ── Return full response ──────────────────────────────────────────────────
-    return jsonify({
-        "triage_card": triage_card,
-        "defender":    defender_output,
-        "prosecutor":  prosecutor_output,
-        "documents":   parsed_docs,
-        "skipped":     skipped
-    })
+        # Stage 4: Python synthesis — no AI.
+        triage_card = synthesise(defender_output, prosecutor_output, parsed_docs)
+
+        yield _sse_event({
+            "stage": "complete",
+            "triage_card": triage_card,
+            "defender": defender_output,
+            "prosecutor": prosecutor_output,
+            "documents": parsed_docs,
+            "skipped": skipped
+        })
+
+    return Response(stream_with_context(generate()), mimetype='text/event-stream')
 
 
 @app.route('/health')
