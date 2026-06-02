@@ -15,7 +15,7 @@ Pipeline (v2 merged architecture):
         → Stage 4: synthesise()                 pure Python, no AI
         → Return SSE stream to frontend
 """
-
+import json as _json
 import json
 import os
 from datetime import datetime, timezone
@@ -293,6 +293,13 @@ def process_claim():
                 "skipped":     skipped,
             }
             save_result(claim_id, internal_result)
+
+            
+            print("\n" + "="*60)
+            print("PIPELINE OUTPUT — claim:", claim_id)
+            print("="*60)
+            print(_json.dumps(internal_result, indent=2, default=str))
+            print("="*60 + "\n", flush=True)
 
             user_result = _build_user_result(triage_card, claim_id)
 

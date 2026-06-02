@@ -84,10 +84,15 @@ def upload_claim_files(claim_id: str, files: list) -> list:
 
             # Generate a signed URL valid for 7 days (604800 seconds)
             signed = client.storage.from_(BUCKET).create_signed_url(
-                path=storage_path,
-                expires_in=604800
-            )
-            signed_url = signed.get("signedURL") or signed.get("signedUrl") or ""
+            path=storage_path,
+            expires_in=604800)
+            # supabase-py v2 wraps response in .data, v1 returns dict directly
+            if hasattr(signed, 'data') and isinstance(signed.data, dict):
+                signed_url = signed.data.get("signedUrl") or signed.data.get("signedURL") or ""
+            elif isinstance(signed, dict):
+                signed_url = signed.get("signedUrl") or signed.get("signedURL") or ""
+            else:
+                signed_url = ""
 
             results.append({
                 "filename":   filename,
@@ -127,10 +132,15 @@ def get_signed_urls_for_claim(claim_id: str, filenames: list) -> list:
         storage_path = f"{claim_id}/{filename}"
         try:
             signed = client.storage.from_(BUCKET).create_signed_url(
-                path=storage_path,
-                expires_in=604800
-            )
-            signed_url = signed.get("signedURL") or signed.get("signedUrl") or ""
+            path=storage_path,
+            expires_in=604800)
+            # supabase-py v2 wraps response in .data, v1 returns dict directly
+            if hasattr(signed, 'data') and isinstance(signed.data, dict):
+                signed_url = signed.data.get("signedUrl") or signed.data.get("signedURL") or ""
+            elif isinstance(signed, dict):
+                signed_url = signed.get("signedUrl") or signed.get("signedURL") or ""
+            else:
+                signed_url = ""
             results.append({"filename": filename, "signed_url": signed_url})
         except Exception as e:
             results.append({"filename": filename, "signed_url": None, "error": str(e)})
