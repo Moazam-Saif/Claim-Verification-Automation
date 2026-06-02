@@ -1,3 +1,15 @@
+"""
+db.py
+
+Database layer using psycopg2 + Supabase Postgres.
+
+Changes from original:
+  - create_claim() no longer accepts drive_folder_id
+  - save_storage_paths() is new — stores Supabase Storage upload results
+  - get_all_claims() now selects storage_files_json instead of drive_folder_id
+  - All other functions unchanged
+"""
+
 import json
 import os
 
@@ -9,7 +21,7 @@ load_dotenv()
 
 DB_URL = os.getenv("DATABASE_URL")
 
-psycopg2.extras.register_default_json(loads=json.loads, globally=True)
+psycopg2.extras.register_default_json(loads=json.loads,  globally=True)
 psycopg2.extras.register_default_jsonb(loads=json.loads, globally=True)
 
 
@@ -18,6 +30,8 @@ def get_conn():
         raise RuntimeError("DATABASE_URL is not set.")
     return psycopg2.connect(DB_URL, cursor_factory=psycopg2.extras.RealDictCursor)
 
+
+# ── Claimants ─────────────────────────────────────────────────────────────────
 
 def create_claimant(full_name, email, phone=None, national_id=None):
     with get_conn() as conn, conn.cursor() as cur:
@@ -31,35 +45,57 @@ def create_claimant(full_name, email, phone=None, national_id=None):
         return cur.fetchone()["id"]
 
 
-def create_claim(claimant_id, drive_folder_id=None):
+# ── Claims ────────────────────────────────────────────────────────────────────
+
+def create_claim(claimant_id: str) -> str:
+    """
+    Create a new claim record. Returns the claim UUID.
+    drive_folder_id removed — storage is handled by Supabase Storage.
+    """
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO claims (claimant_id, drive_folder_id)
-            VALUES (%s, %s) RETURNING id
+            INSERT INTO claims (claimant_id)
+            VALUES (%s) RETURNING id
             """,
-            (claimant_id, drive_folder_id),
+            (claimant_id,),
         )
         return cur.fetchone()["id"]
 
 
-def set_claim_status(claim_id, status):
+def set_claim_status(claim_id: str, status: str):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
-            """
-            UPDATE claims
-            SET status = %s
-            WHERE id = %s
-            """,
+            "UPDATE claims SET status = %s WHERE id = %s",
             (status, claim_id),
         )
 
 
-def save_result(claim_id, result: dict):
-    triage = result.get("triage_card", {})
-    verdict = triage.get("verdict")
-    docs = triage.get("documents_processed", [])
-    errors = []
+def save_storage_paths(claim_id: str, storage_results: list):
+    """
+    Persist the Supabase Storage upload results for a claim.
+
+    storage_results is the list returned by supabase_storage.upload_claim_files():
+    [
+        { "filename": "invoice.pdf", "path": "claim_id/invoice.pdf",
+          "signed_url": "https://...", "error": None },
+        ...
+    ]
+    """
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE claims SET storage_files_json = %s WHERE id = %s
+            """,
+            (psycopg2.extras.Json(storage_results), claim_id),
+        )
+
+
+def save_result(claim_id: str, result: dict):
+    triage   = result.get("triage_card", {})
+    verdict  = triage.get("verdict")
+    docs     = triage.get("documents_processed", [])
+    errors   = []
 
     prosecutor = result.get("prosecutor", {})
     if isinstance(prosecutor, dict) and prosecutor.get("agent_error"):
@@ -90,7 +126,7 @@ def save_result(claim_id, result: dict):
         )
 
 
-def save_error(claim_id, error_detail: str):
+def save_error(claim_id: str, error_detail: str):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -100,7 +136,7 @@ def save_error(claim_id, error_detail: str):
         )
 
 
-def worker_decision(claim_id, decision: str, notes: str = None):
+def worker_decision(claim_id: str, decision: str, notes: str = None):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
@@ -120,7 +156,8 @@ def get_all_claims():
         cur.execute(
             """
             SELECT c.id, c.status, c.verdict, c.submitted_at, c.reviewed_at,
-                   c.drive_folder_id, c.documents_json, c.result_json,
+                   c.storage_files_json,
+                   c.documents_json, c.result_json,
                    c.error_log, c.worker_decision, c.worker_notes,
                    cl.full_name, cl.email, cl.phone, cl.national_id
             FROM claims c JOIN claimants cl ON c.claimant_id = cl.id
@@ -130,7 +167,7 @@ def get_all_claims():
         return cur.fetchall()
 
 
-def get_claim_detail(claim_id):
+def get_claim_detail(claim_id: str):
     with get_conn() as conn, conn.cursor() as cur:
         cur.execute(
             """

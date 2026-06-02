@@ -32,3 +32,7 @@ CREATE TABLE claims (
 CREATE INDEX idx_claims_claimant  ON claims(claimant_id);
 CREATE INDEX idx_claims_status    ON claims(status);
 CREATE INDEX idx_claims_verdict   ON claims(verdict);
+
+-- ALTER TABLE claims
+--     DROP COLUMN IF EXISTS drive_folder_id,
+--     ADD COLUMN IF NOT EXISTS storage_files_json JSONB;

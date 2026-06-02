@@ -26,7 +26,7 @@ htmlcov/
 .coverage
 coverage.*
 
-# Environment files
+# Environment files — never commit these
 .env
 .env.*
 
@@ -39,6 +39,7 @@ coverage.*
 
 # Generated claim docs helper output
 generated_claims/
+sample_claim_docs/
 
 # Local docs / guides you don't want in repo
 GUIDE.md
@@ -59,5 +60,3 @@ Thumbs.db
 # Other
 .Python
 __pycache__/
-# Google service account key
-claim-verification-498218-4e12ec42edd2.json
