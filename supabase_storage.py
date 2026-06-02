@@ -2,21 +2,16 @@
 supabase_storage.py
 
 Handles PDF uploads to Supabase Storage.
-Replaces Google Drive entirely.
 
-Bucket layout:
-    claims/{claim_id}/{filename}
-
-Each file gets a signed URL (valid 7 days) stored alongside the claim record.
-Public URLs are also generated so the admin panel can link directly to files.
-
-Setup required in Supabase dashboard:
-    1. Storage → New bucket → name: "claims" → set to PRIVATE
-    2. No RLS policies needed for server-side uploads (uses service key)
+FIX: The original code tried to read the signed URL from response.data["signedURL"]
+     or response.data["signedUrl"] — neither exists in supabase-py v2.
+     The Python SDK returns a SignedURLResponse object where the URL is a direct
+     attribute: response.signed_url (lowercase, underscore).
+     This is completely different from the JS SDK (data.signedUrl) that the
+     original code was accidentally ported from.
 """
 
 import os
-import io
 from supabase import create_client, Client
 
 _client: Client | None = None
@@ -26,7 +21,7 @@ def _get_client() -> Client:
     global _client
     if _client is None:
         url = os.environ.get("SUPABASE_URL")
-        key = os.environ.get("SUPABASE_SERVICE_KEY")  # Service key, not anon key
+        key = os.environ.get("SUPABASE_SERVICE_KEY")
         if not url or not key:
             raise RuntimeError(
                 "SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in your .env file."
@@ -38,25 +33,37 @@ def _get_client() -> Client:
 BUCKET = "claims"
 
 
+def _extract_signed_url(response) -> str:
+    """
+    Extract the signed URL string from a supabase-py v2 create_signed_url response.
+
+    supabase-py v2 returns a SignedURLResponse dataclass with a `signed_url` attribute.
+    This is NOT a dict and does NOT have a `.data` wrapper — that's the JS SDK shape.
+
+    Fallback chain handles any edge-cases or future SDK changes gracefully.
+    """
+    # supabase-py v2: direct attribute (correct path)
+    if hasattr(response, 'signed_url') and response.signed_url:
+        return response.signed_url
+
+    # Some intermediate versions wrapped in .data as a dataclass
+    if hasattr(response, 'data'):
+        data = response.data
+        if hasattr(data, 'signed_url') and data.signed_url:
+            return data.signed_url
+        # dict shape (shouldn't happen in v2 but handle anyway)
+        if isinstance(data, dict):
+            return data.get('signedUrl') or data.get('signedURL') or ''
+
+    return ''
+
+
 def upload_claim_files(claim_id: str, files: list) -> list:
     """
     Upload a list of Flask file objects to Supabase Storage.
 
-    Args:
-        claim_id:  UUID string of the claim (used as the folder name)
-        files:     list of werkzeug FileStorage objects from request.files
-
-    Returns:
-        list of dicts:
-        [
-            {
-                "filename":   "01_insurance_claim_form.pdf",
-                "path":       "claims/abc-123/01_insurance_claim_form.pdf",
-                "signed_url": "https://...supabase.co/storage/v1/object/sign/...",
-                "error":      None   # or error message string if upload failed
-            },
-            ...
-        ]
+    Returns list of dicts:
+        { "filename", "path", "signed_url", "error" }
     """
     client = _get_client()
     results = []
@@ -66,13 +73,9 @@ def upload_claim_files(claim_id: str, files: list) -> list:
         storage_path = f"{claim_id}/{filename}"
 
         try:
-            # Read bytes — file cursor may already be at start from pdf_reader,
-            # so seek back to be safe
             f.stream.seek(0)
             file_bytes = f.stream.read()
 
-            # Upload to Supabase Storage
-            # upsert=True overwrites if the same filename was uploaded before
             client.storage.from_(BUCKET).upload(
                 path=storage_path,
                 file=file_bytes,
@@ -82,17 +85,11 @@ def upload_claim_files(claim_id: str, files: list) -> list:
                 }
             )
 
-            # Generate a signed URL valid for 7 days (604800 seconds)
-            signed = client.storage.from_(BUCKET).create_signed_url(
-            path=storage_path,
-            expires_in=604800)
-            # supabase-py v2 wraps response in .data, v1 returns dict directly
-            if hasattr(signed, 'data') and isinstance(signed.data, dict):
-                signed_url = signed.data.get("signedUrl") or signed.data.get("signedURL") or ""
-            elif isinstance(signed, dict):
-                signed_url = signed.get("signedUrl") or signed.get("signedURL") or ""
-            else:
-                signed_url = ""
+            signed_response = client.storage.from_(BUCKET).create_signed_url(
+                path=storage_path,
+                expires_in=604800   # 7 days
+            )
+            signed_url = _extract_signed_url(signed_response)
 
             results.append({
                 "filename":   filename,
@@ -102,7 +99,6 @@ def upload_claim_files(claim_id: str, files: list) -> list:
             })
 
         except Exception as e:
-            # Don't crash the pipeline if a single upload fails
             results.append({
                 "filename":   filename,
                 "path":       storage_path,
@@ -115,15 +111,7 @@ def upload_claim_files(claim_id: str, files: list) -> list:
 
 def get_signed_urls_for_claim(claim_id: str, filenames: list) -> list:
     """
-    Regenerate signed URLs for an existing claim's files.
-    Used by the admin panel when URLs have expired.
-
-    Args:
-        claim_id:  UUID string
-        filenames: list of filename strings (just the basename, not the full path)
-
-    Returns:
-        list of { filename, signed_url } dicts
+    Regenerate signed URLs for an existing claim's files (used when stored URLs expire).
     """
     client = _get_client()
     results = []
@@ -131,16 +119,11 @@ def get_signed_urls_for_claim(claim_id: str, filenames: list) -> list:
     for filename in filenames:
         storage_path = f"{claim_id}/{filename}"
         try:
-            signed = client.storage.from_(BUCKET).create_signed_url(
-            path=storage_path,
-            expires_in=604800)
-            # supabase-py v2 wraps response in .data, v1 returns dict directly
-            if hasattr(signed, 'data') and isinstance(signed.data, dict):
-                signed_url = signed.data.get("signedUrl") or signed.data.get("signedURL") or ""
-            elif isinstance(signed, dict):
-                signed_url = signed.get("signedUrl") or signed.get("signedURL") or ""
-            else:
-                signed_url = ""
+            signed_response = client.storage.from_(BUCKET).create_signed_url(
+                path=storage_path,
+                expires_in=604800
+            )
+            signed_url = _extract_signed_url(signed_response)
             results.append({"filename": filename, "signed_url": signed_url})
         except Exception as e:
             results.append({"filename": filename, "signed_url": None, "error": str(e)})
