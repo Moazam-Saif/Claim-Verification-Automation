@@ -16,9 +16,13 @@
 <body>
   <div class="box">
     <h1>Claim Pipeline</h1>
-    <p>Upload up to 10 PDF files (text-layer PDFs preferred). The pipeline will run and return a triage card.</p>
+    <p>Upload up to 10 PDF files (text-layer PDFs preferred). The pipeline will return a simple status for the user.</p>
 
     <form id="uploadForm">
+      <input type="text" id="claimant_name" name="claimant_name" placeholder="Claimant name (optional)" />
+      <br/><br/>
+      <input type="email" id="claimant_email" name="claimant_email" placeholder="Claimant email (optional)" />
+      <br/><br/>
       <input type="file" id="files" name="documents" accept="application/pdf" multiple />
       <br/><br/>
       <button type="submit" id="submitBtn">Process Claim</button>
@@ -42,7 +46,7 @@
       status.textContent = message;
     }
 
-    function renderTriageCard(payload) {
+    function renderUserResult(payload) {
       result.innerHTML = `<pre>${JSON.stringify(payload, null, 2)}</pre>`;
     }
 
@@ -54,6 +58,8 @@
         return;
       }
       const fd = new FormData();
+      fd.append('claimant_name', document.getElementById('claimant_name').value);
+      fd.append('claimant_email', document.getElementById('claimant_email').value);
       for (const f of input.files) fd.append('documents', f, f.name);
 
       submitBtn.disabled = true;
@@ -93,9 +99,9 @@
                   result.innerHTML = `<pre style="color:crimson">${JSON.stringify(event, null, 2)}</pre>`;
                 } else if (event.stage === 'complete') {
                   updateStatus('Done.');
-                  // Post the triage payload to the server to render the human-friendly HTML
+                  // Post the user-facing payload to the server to render the status card
                   try {
-                    const renderRes = await fetch('/render-triage', {
+                    const renderRes = await fetch('/render-user-result', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify(event)

@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Claim Status</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #16202a;
+      --muted: #5b6875;
+      --ok: #16825d;
+      --warn: #a15c00;
+      --bad: #a1133d;
+      --border: #d9e2ef;
+    }
+    body { margin: 0; font-family: Arial, sans-serif; background: linear-gradient(180deg, #eef4ff, var(--bg)); color: var(--text); }
+    .wrap { max-width: 760px; margin: 40px auto; padding: 0 20px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 28px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08); }
+    .status { display: inline-flex; align-items: center; padding: 8px 14px; border-radius: 999px; font-weight: 700; margin-bottom: 16px; }
+    .approved { background: #eaf8f1; color: var(--ok); }
+    .rejected { background: #fdecef; color: var(--bad); }
+    .pending { background: #fff6e6; color: var(--warn); }
+    h1 { margin: 0 0 12px; font-size: 30px; }
+    p { line-height: 1.6; color: var(--muted); }
+    .claim-id { margin-top: 18px; font-size: 13px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="status {{ 'approved' if user_result.status == 'approved' else 'rejected' if user_result.status == 'rejected' else 'pending' }}">
+        {{ user_result.status.replace('_', ' ')|upper }}
+      </div>
+      <h1>{{ user_result.headline }}</h1>
+      <p>{{ user_result.reason }}</p>
+      <div class="claim-id">Claim reference: {{ user_result.claim_id }}</div>
+    </div>
+  </div>
+</body>
+</html>

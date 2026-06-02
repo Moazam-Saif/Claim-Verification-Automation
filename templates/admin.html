@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Admin Review Queue</title>
+  <style>
+    :root {
+      --bg: #0f1722;
+      --card: #071021;
+      --muted: #8b98a6;
+      --text: #e6f0f3;
+      --accent: #00c2a8;
+      --accent-2: #ffb86b;
+      --line: rgba(255,255,255,0.08);
+    }
+    body { margin: 0; font-family: Arial, sans-serif; background: linear-gradient(180deg, var(--bg), #071026); color: var(--text); }
+    .wrap { max-width: 1180px; margin: 28px auto; padding: 0 20px 28px; }
+    .hero, .card { background: linear-gradient(180deg, var(--card), #071426); border-radius: 16px; padding: 22px; box-shadow: 0 8px 30px rgba(2, 6, 23, 0.6); }
+    .hero { margin-bottom: 16px; }
+    .hero h1 { margin: 0 0 8px; font-size: 26px; }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; }
+    .card h2 { margin: 0 0 10px; font-size: 18px; }
+    .meta { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+    .section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; font-size: 13px; color: var(--text); background: rgba(255,255,255,0.03); }
+    .muted { color: var(--muted); }
+    .doc { display: block; margin: 6px 0; color: #8fd3ff; text-decoration: none; }
+    .empty { padding: 24px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); background: rgba(255,255,255,0.02); }
+    .badge { display: inline-flex; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 10px; background: rgba(0, 194, 168, 0.12); color: var(--accent); }
+    .subtle { color: var(--muted); font-size: 13px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <h1>Admin manual review queue</h1>
+      <p>Pending claims are shown here with the full internal context: claimant details, why the claim was not auto-approved, verified and unverified items, next steps, and uploaded PDFs.</p>
+    </div>
+
+    {% if claims %}
+    <div class="grid">
+      {% for claim in claims %}
+      <div class="card">
+        <div class="badge">PENDING MANUAL APPROVAL</div>
+        <h2>{{ claim.claimant_name }}</h2>
+        <div class="meta">{{ claim.claimant_email }} · {{ claim.claim_id }} · {{ claim.submitted_at }}</div>
+
+        <div class="section">
+          <div class="subtle"><strong>Why not auto-approved</strong></div>
+          <div>{{ claim.why_not_auto_approved }}</div>
+        </div>
+
+        <div class="section">
+          <div class="subtle"><strong>Verified things</strong></div>
+          <div class="chips">
+            {% for item in claim.verified_things %}
+            <span class="chip">{{ item }}</span>
+            {% endfor %}
+            {% if not claim.verified_things %}
+            <span class="muted">No verified items recorded yet.</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="subtle"><strong>Unverified things</strong></div>
+          <div class="chips">
+            {% for item in claim.unverified_things %}
+            <span class="chip">{{ item }}</span>
+            {% endfor %}
+            {% if not claim.unverified_things %}
+            <span class="muted">No unverified items recorded yet.</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="subtle"><strong>Next steps</strong></div>
+          <div class="chips">
+            {% for step in claim.next_steps %}
+            <span class="chip">{{ step }}</span>
+            {% endfor %}
+            {% if not claim.next_steps %}
+            <span class="muted">No next steps generated.</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="subtle"><strong>Uploaded PDFs</strong></div>
+          {% for doc in claim.documents %}
+            {% if claim.drive_view_url %}
+            <a class="doc" href="{{ claim.drive_view_url }}" target="_blank" rel="noreferrer">{{ doc }}</a>
+            {% else %}
+            <div class="muted">{{ doc }} · Google Drive upload pending</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No claims are waiting for manual review.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
