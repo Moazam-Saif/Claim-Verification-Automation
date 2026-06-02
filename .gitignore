@@ -1,0 +1,61 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python build / packaging
+*.egg-info/
+dist/
+build/
+pip-wheel-metadata/
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.cache/
+.tox/
+.nox/
+htmlcov/
+.coverage
+coverage.*
+
+# Environment files
+.env
+.env.*
+
+# Local fixtures and large data
+/files/
+*.pdf
+*.csv
+*.sqlite
+*.db
+
+# Generated claim docs helper output
+generated_claims/
+
+# Local docs / guides you don't want in repo
+GUIDE.md
+claimsense_master_plan_v2.md
+docs/
+guides/
+
+# Logs
+*.log
+
+# Editor & OS
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# Other
+.Python
+__pycache__/
