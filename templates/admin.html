@@ -271,8 +271,6 @@
       font-size: 12px;
       color: var(--ink-light);
     }
-    .doc-count { }
-    .submitted-at { }
 
     /* ── modal overlay ── */
     .modal-overlay {
@@ -445,6 +443,76 @@
       flex-shrink: 0;
     }
 
+    /* ── worker action bar ── */
+    .action-bar {
+      margin-top: 4px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .action-bar-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      margin-bottom: 10px;
+    }
+    .action-notes {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--sand-pale);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      color: var(--ink);
+      resize: vertical;
+      min-height: 64px;
+      outline: none;
+      margin-bottom: 12px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .action-notes:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(86,138,151,0.18);
+    }
+    .action-notes::placeholder { color: var(--ink-light); }
+    .action-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .action-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 11px 14px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.01em;
+    }
+    .action-btn:hover:not(:disabled) { opacity: 0.82; }
+    .action-btn:active:not(:disabled) { transform: scale(0.98); }
+    .action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-approve  { background: #d1f0e8; color: #165c45; }
+    .btn-reject   { background: var(--high-bg); color: var(--high-text); }
+    .btn-escalate { background: var(--mauve-pale); color: var(--mauve); }
+
+    .action-feedback {
+      margin-top: 10px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+    }
+    .feedback-ok  { background: #d1f0e8; color: #165c45; display: block; }
+    .feedback-err { background: var(--high-bg); color: var(--high-text); display: block; }
+
     /* empty state */
     .empty {
       text-align: center;
@@ -467,6 +535,7 @@
       .stats-row { grid-template-columns: 1fr; }
       .modal-body { padding: 20px; }
       .modal-header { padding: 20px; }
+      .action-btns { flex-direction: column; }
     }
   </style>
 </head>
@@ -521,14 +590,14 @@
   <div class="case-grid">
     {% for claim in claims %}
 
-    {# Pull flag summary from result_json if available #}
-    {% set triage = claim.get('result_json', {}).get('triage_card', {}) if claim.get('result_json') else {} %}
+    {# Pull flag summary and confidence from triage_card #}
+    {% set triage       = claim.get('result_json', {}).get('triage_card', {}) if claim.get('result_json') else {} %}
     {% set flag_summary = triage.get('flag_summary', {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}) %}
     {% set conf_score   = triage.get('confidence_score', 0.5) %}
     {% set conf_tier    = triage.get('confidence_tier', 'MEDIUM') %}
     {% set overall_risk = triage.get('overall_risk') or (claim.get('result_json', {}).get('prosecutor', {}) or {}).get('overall_risk', 'MEDIUM') %}
     {% set conf_pct     = (conf_score * 100) | int %}
-    {# SVG ring: circumference 113.1, offset = 113.1 * (1 - conf_score) #}
+    {# SVG ring: circumference ~113.1, dashoffset = 113.1 * (1 - score) means full at 1.0, empty at 0.0 #}
     {% set ring_offset  = (113.1 * (1 - conf_score)) | round(1) %}
 
     <div class="case-card" onclick="openModal('modal-{{ loop.index }}')">
@@ -623,12 +692,6 @@
                 <div class="flag-issue">{{ item }}</div>
               </div>
               {% endfor %}
-
-              {# If we have full flag objects from the prosecutor, show them instead #}
-              {% set full_flags = (claim.get('result_json', {}).get('prosecutor', {}) or {}).get('flags', []) %}
-              {% if full_flags %}
-              <!-- detailed flags from prosecutor -->
-              {% endif %}
             </div>
           </div>
           {% endif %}
@@ -680,6 +743,30 @@
             {% endif %}
           </div>
 
+          <!-- ── worker decision ── -->
+          <div class="action-bar">
+            <div class="action-bar-label">Record decision</div>
+            <textarea
+              class="action-notes"
+              id="notes-{{ loop.index }}"
+              placeholder="Optional notes (visible to senior adjudicators)…"></textarea>
+            <div class="action-btns">
+              <button class="action-btn btn-approve"
+                onclick="submitDecision('{{ claim.claim_id }}', 'approved', {{ loop.index }})">
+                ✓ Approve
+              </button>
+              <button class="action-btn btn-reject"
+                onclick="submitDecision('{{ claim.claim_id }}', 'rejected', {{ loop.index }})">
+                ✗ Reject
+              </button>
+              <button class="action-btn btn-escalate"
+                onclick="submitDecision('{{ claim.claim_id }}', 'escalated', {{ loop.index }})">
+                ↑ Escalate
+              </button>
+            </div>
+            <div class="action-feedback" id="feedback-{{ loop.index }}"></div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -719,6 +806,41 @@
       });
     }
   });
+
+  async function submitDecision(claimId, decision, idx) {
+    const notes    = document.getElementById('notes-' + idx).value.trim();
+    const feedback = document.getElementById('feedback-' + idx);
+    const btns     = document.querySelectorAll(`#modal-${idx} .action-btn`);
+
+    btns.forEach(b => b.disabled = true);
+    feedback.className  = 'action-feedback';
+    feedback.textContent = 'Saving…';
+    feedback.style.display = 'block';
+
+    try {
+      const res = await fetch('/worker-action', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ claim_id: claimId, decision, notes })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.ok) {
+        const labels = { approved: 'Approved', rejected: 'Rejected', escalated: 'Escalated' };
+        feedback.className   = 'action-feedback feedback-ok';
+        feedback.textContent = `✓ Decision recorded: ${labels[decision]}. This card will be removed on next refresh.`;
+        btns.forEach(b => b.disabled = true);
+      } else {
+        feedback.className   = 'action-feedback feedback-err';
+        feedback.textContent = 'Error: ' + (data.error || 'Unknown error. Please try again.');
+        btns.forEach(b => b.disabled = false);
+      }
+    } catch (err) {
+      feedback.className   = 'action-feedback feedback-err';
+      feedback.textContent = 'Network error — ' + err.message;
+      btns.forEach(b => b.disabled = false);
+    }
+  }
 </script>
 </body>
 </html>

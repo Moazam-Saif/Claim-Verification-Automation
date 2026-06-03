@@ -5,16 +5,23 @@ Flask application — main entry point and pipeline orchestrator.
 
 Pipeline (v2 merged architecture):
     Upload PDFs
-        → Stage 1: pdf_reader.extract_text()   per doc
-        → Supabase Storage upload               per doc  (replaces Google Drive)
-        → Stage 2: parse_document()             per doc  (classify + extract, 1 AI call)
-        → Stage 3a: run_defender()              1 AI call across all docs
-        → Stage 3b: run_prosecutor()            1 AI call across all docs
-        → Hard rules: run_hard_rules()          pure Python, no AI
-        → merge_hard_rule_flags()               merge into prosecutor output
-        → Stage 4: synthesise()                 pure Python, no AI
+        → Stage 1: read bytes + extract_text_from_bytes()  per doc
+        → Supabase Storage upload                           per doc (bytes, not stream)
+        → Stage 2: parse_document()                         per doc (classify + extract)
+        → Stage 3a: run_defender()                          1 AI call across all docs
+        → Stage 3b: run_prosecutor()                        1 AI call across all docs
+        → Hard rules: run_hard_rules()                      pure Python, no AI
+        → merge_hard_rule_flags()                           merge into prosecutor output
+        → Stage 4: synthesise()                             pure Python, no AI
         → Return SSE stream to frontend
+
+Fix applied:
+    File bytes are read ONCE at the start of the request (before extract_text_from_bytes),
+    stored in raw_docs["file_bytes"], and passed directly to upload_claim_files().
+    This prevents the stream-exhaustion bug where extract_text() consumed the file
+    stream before Supabase upload could read it.
 """
+
 import json as _json
 import json
 import os
@@ -24,13 +31,13 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 from dotenv import load_dotenv
 
-from pdf_reader import extract_text
+from pdf_reader import extract_text_from_bytes
 from validators import run_hard_rules, POLICY_RULES
 from parser import parse_document
 from defender import run_defender
 from prosecutor import run_prosecutor, merge_hard_rule_flags
 from synthesiser import synthesise
-from supabase_storage import upload_claim_files   # ← replaces Google Drive
+from supabase_storage import upload_claim_files
 from db import (
     create_claim,
     create_claimant,
@@ -38,8 +45,8 @@ from db import (
     save_error,
     save_result,
     set_claim_status,
-    save_storage_paths,                           # ← new db function (see db.py)
-    worker_decision,  
+    save_storage_paths,
+    worker_decision,
 )
 
 load_dotenv()
@@ -90,20 +97,16 @@ def _build_admin_view(claim: dict) -> dict:
     if not isinstance(triage_card, dict):
         triage_card = {}
 
-    # ── Storage URLs ──────────────────────────────────────────────────────────
-    # storage_files_json is a list of {filename, path, signed_url} dicts
-    # stored by save_storage_paths() after upload
     storage_files = claim.get('storage_files_json') or []
     documents = []
     for item in storage_files:
         if isinstance(item, dict):
             documents.append({
                 "name":       item.get('filename', 'Unknown file'),
-                "signed_url": item.get('signed_url'),     # may be expired
+                "signed_url": item.get('signed_url'),
                 "path":       item.get('path'),
             })
 
-    # Fallback: if storage_files is empty, pull filenames from documents_processed
     if not documents:
         for item in triage_card.get('documents_processed', []):
             if isinstance(item, dict):
@@ -151,7 +154,7 @@ def _build_admin_view(claim: dict) -> dict:
         'unverified_things':     unverified_things if isinstance(unverified_things, list)
                                  else _text_list([unverified_things]),
         'next_steps':            next_steps,
-        'documents':             documents,   # list of {name, signed_url, path}
+        'documents':             documents,
     }
 
 
@@ -194,18 +197,24 @@ def process_claim():
     claimant_id = create_claimant(claimant_name, claimant_email)
     claim_id    = create_claim(claimant_id)
 
-    # ── Stage 1: Extract text from PDFs ──────────────────────────────────────
+    # ── Stage 1: Read bytes + extract text ───────────────────────────────────
+    # IMPORTANT: read bytes BEFORE calling extract_text_from_bytes so the same
+    # bytes can be reused for Supabase upload. Never pass file objects downstream.
     raw_docs = []
     skipped  = []
 
     for f in files:
-        extraction = extract_text(f)
+        # Read bytes exactly once — this is the only stream access in the app
+        f.stream.seek(0)
+        file_bytes = f.stream.read()
+
+        extraction = extract_text_from_bytes(file_bytes)
         if extraction["success"]:
             raw_docs.append({
-                "filename": f.filename,
-                "text":     extraction["text"],
-                "pages":    extraction["page_count"],
-                "file_obj": f,              # keep reference for Supabase upload
+                "filename":   f.filename,
+                "text":       extraction["text"],
+                "pages":      extraction["page_count"],
+                "file_bytes": file_bytes,   # bytes stored for upload — no stream needed
             })
         else:
             skipped.append({
@@ -231,11 +240,10 @@ def process_claim():
                 "message": f"Uploading {len(raw_docs)} file(s) to storage..."
             })
 
-            file_objs = [doc["file_obj"] for doc in raw_docs]
-            storage_results = upload_claim_files(claim_id, file_objs)
+            # Pass raw_docs directly — upload reads file_bytes, not file streams
+            storage_results = upload_claim_files(claim_id, raw_docs)
             save_storage_paths(claim_id, storage_results)
 
-            # Report any upload failures (don't abort — processing can continue)
             upload_errors = [r for r in storage_results if r.get("error")]
             if upload_errors:
                 yield _sse_event({
@@ -295,7 +303,6 @@ def process_claim():
             }
             save_result(claim_id, internal_result)
 
-            
             print("\n" + "="*60)
             print("PIPELINE OUTPUT — claim:", claim_id)
             print("="*60)
@@ -347,11 +354,12 @@ def health():
         "model":  os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     })
 
+
 @app.route('/worker-action', methods=['POST'])
 def worker_action():
     data     = request.get_json(force=True)
     claim_id = data.get('claim_id')
-    decision = data.get('decision')   # 'approved' | 'rejected' | 'escalated'
+    decision = data.get('decision')
     notes    = data.get('notes', '')
     if not claim_id or not decision:
         return jsonify({'error': 'claim_id and decision are required'}), 400
@@ -359,6 +367,7 @@ def worker_action():
         return jsonify({'error': 'decision must be approved, rejected, or escalated'}), 400
     worker_decision(claim_id, decision, notes)
     return jsonify({'ok': True, 'claim_id': claim_id, 'decision': decision})
+
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 
