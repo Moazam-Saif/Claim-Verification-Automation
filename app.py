@@ -398,7 +398,8 @@ def admin_dashboard():
 def health():
     return jsonify({
         "status": "ok",
-        "model":  os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+        "model":   os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        "backend": "gemini-enterprise-agent-platform"
     })
 
 
