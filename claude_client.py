@@ -25,10 +25,6 @@ _client = None
 
 
 def _get_client():
-    global _client
-    if _client is not None:
-        return _client
-
     if genai is None:
         raise RuntimeError("google-genai SDK not installed.")
 
@@ -37,20 +33,17 @@ def _get_client():
         raise RuntimeError("GCP_SERVICE_ACCOUNT_JSON env var is not set.")
 
     service_account_info = json.loads(raw_json)
-
     credentials = service_account.Credentials.from_service_account_info(
         service_account_info,
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
 
-    _client = genai.Client(
-    enterprise=True,        # current
-    project=service_account_info["project_id"],
-    location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
-    credentials=credentials
-)
-
-    return _client
+    return genai.Client(
+        enterprise=True,
+        project=service_account_info["project_id"],
+        location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
+        credentials=credentials
+    )
 
 
 def call_claude(system_prompt: str, user_prompt: str,
