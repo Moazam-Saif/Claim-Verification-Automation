@@ -666,8 +666,17 @@
             } else if (event.stage === 'analysing') {
               setStatus('Running approval and risk analysis...', 'processing');
             } else if (event.stage === 'error') {
-              setStatus('Processing error — please try again.', 'error-state');
-              result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${JSON.stringify(event, null, 2)}</pre>`;
+              setStatus('Unable to process claim.', 'error-state');
+              result.innerHTML = `
+    <div style="margin-top:16px;padding:20px 24px;background:#fbeef2;border-radius:12px;
+                border:1px solid #e8b4c4;">
+      <p style="font-size:14px;font-weight:500;color:#8b1a38;margin-bottom:6px;">
+        Something went wrong
+      </p>
+      <p style="font-size:13px;color:#a0324f;line-height:1.6">
+        ${event.error || 'An unexpected error occurred. Please try again or contact support.'}
+      </p>
+    </div>`;
             } else if (event.stage === 'complete') {
               setStatus('Done.');
               try {

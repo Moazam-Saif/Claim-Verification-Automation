@@ -263,6 +263,16 @@ def process_claim():
                     lambda doc: parse_document(doc["text"], doc["filename"]),
                     raw_docs
                 ))
+            
+            # NEW: log any individual parse failures (they're already marked unusable,
+            # but we want the errors in backend logs)
+            for d in parsed_docs:
+                if d.get("parse_error"):
+                    print(
+                        f"[PARSE ERROR] claim={claim_id} file={d['filename']} "
+                        f"error={d['parse_error']}",
+                        flush=True
+                    )
 
             usable = [d for d in parsed_docs if not d.get("unusable")]
             if not usable:
@@ -286,6 +296,26 @@ def process_claim():
                 pros_future = executor.submit(run_prosecutor, parsed_docs, POLICY_RULES)
                 defender_output   = def_future.result()
                 prosecutor_output = pros_future.result()
+            
+            # ── NEW: check for agent errors before proceeding ─────────────────
+            agent_errors = []
+            if defender_output.get("agent_error"):
+                detail = defender_output.get("error_detail", "Unknown error")
+                agent_errors.append(f"Defender agent failed: {detail}")
+            if prosecutor_output.get("agent_error"):
+                detail = prosecutor_output.get("error_detail", "Unknown error")
+                agent_errors.append(f"Prosecutor agent failed: {detail}")
+
+            if agent_errors:
+                error_msg = " | ".join(agent_errors)
+                print(f"[AGENT ERROR] claim_id={claim_id} — {error_msg}", flush=True)
+                save_error(claim_id, error_msg)
+                yield _sse_event({
+                    "stage": "error",
+                    "error": "We were unable to process your claim at this time. Please try again or contact support.",
+                    "claim_id": claim_id
+                })
+                return
 
             # ── Hard rules (deterministic, no AI) ────────────────────────────
             hard_flags        = run_hard_rules(parsed_docs)

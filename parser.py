@@ -152,6 +152,13 @@ def parse_document(raw_text: str, filename: str) -> dict:
         }
 
     # Fallback — mark as unusable so downstream agents skip it cleanly
+    print(
+    f"[PARSE FAIL] file={filename} "
+    f"error={result.get('error', 'Unknown')} "
+    f"raw={result.get('raw', '')[:200]}",
+    flush=True
+    )
+    
     return {
         "filename":              filename,
         "doc_type":              "unknown",
