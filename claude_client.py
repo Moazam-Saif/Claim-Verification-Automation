@@ -42,7 +42,11 @@ def _get_client():
         enterprise=True,
         project=service_account_info["project_id"],
         location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
-        credentials=credentials
+        credentials=credentials,
+        http_options=types.HttpOptions(
+        timeout=120000  # 120 seconds in milliseconds
+        )
+
     )
 
 
@@ -64,6 +68,8 @@ def call_claude(system_prompt: str, user_prompt: str,
             )
 
             raw = response.text.strip()
+            raw = response.text.strip()
+            print(f"[RAW RESPONSE LENGTH] {len(raw)} chars", flush=True)
 
             if raw.startswith("```"):
                 parts = raw.split("```")
