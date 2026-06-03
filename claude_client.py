@@ -12,6 +12,7 @@ import os
 import re
 import time
 import random
+import httpx
 
 try:
     from google import genai
