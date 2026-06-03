@@ -65,8 +65,9 @@ def call_claude(system_prompt: str, user_prompt: str,
                 model=_MODEL_NAME,
                 contents=user_prompt,
                 config=types.GenerateContentConfig(
-                    system_instruction=system_prompt,
-                    max_output_tokens=max_tokens,
+                system_instruction=system_prompt,
+                max_output_tokens=max_tokens,
+                response_mime_type="application/json",
                 )
             )
 
