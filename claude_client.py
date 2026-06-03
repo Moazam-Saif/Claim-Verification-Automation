@@ -74,7 +74,7 @@ def call_claude(system_prompt: str, user_prompt: str,
 
             parsed = _parse_json(raw)
             if parsed is None:
-                last_error = f"Response was not valid JSON. Raw: {raw[:300]}"
+                last_error = f"Response was not valid JSON. Raw: {raw}"
                 if attempt < retries:
                     time.sleep((2 ** attempt) + random.random())
                 continue
