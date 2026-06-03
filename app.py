@@ -307,11 +307,8 @@ def process_claim():
                 "message": "Running approval and risk analysis..."
             })
 
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                def_future  = executor.submit(run_defender,   parsed_docs, POLICY_RULES)
-                pros_future = executor.submit(run_prosecutor, parsed_docs, POLICY_RULES)
-                defender_output   = def_future.result()
-                prosecutor_output = pros_future.result()
+            defender_output   = run_defender(parsed_docs, POLICY_RULES)
+            prosecutor_output = run_prosecutor(parsed_docs, POLICY_RULES)
             
             # ── NEW: check for agent errors before proceeding ─────────────────
             agent_errors = []
