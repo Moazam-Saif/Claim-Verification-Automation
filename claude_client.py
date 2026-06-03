@@ -15,6 +15,7 @@ import random
 
 try:
     from google import genai
+    from google.genai import types
     from google.oauth2 import service_account
 except ImportError:
     genai = None
@@ -53,7 +54,7 @@ def _get_client():
 
 
 def call_claude(system_prompt: str, user_prompt: str,
-                max_tokens: int = 1500, retries: int = 2) -> dict:
+                max_tokens: int = 1200, retries: int = 2) -> dict:
     last_error = None
 
     for attempt in range(retries + 1):
@@ -63,10 +64,10 @@ def call_claude(system_prompt: str, user_prompt: str,
             response = client.models.generate_content(
                 model=_MODEL_NAME,
                 contents=user_prompt,
-                config={
-                    "system_instruction": system_prompt,
-                    "max_output_tokens": max_tokens,
-                }
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=max_tokens,
+                )
             )
 
             raw = response.text.strip()
