@@ -336,7 +336,7 @@ def render_user_result():
     return render_template('user_result.html', user_result=user_result)
 
 
-@app.route('/admin')
+@app.route('/review-dashboard')
 def admin_dashboard():
     """Render the manual review queue for admins."""
     pending_claims = [

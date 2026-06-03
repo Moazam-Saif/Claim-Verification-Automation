@@ -1,32 +1,42 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Submit a Claim</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap"
+    rel="stylesheet">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --teal:       #568A97;
-      --teal-dark:  #3f6e7b;
-      --teal-pale:  #e8f2f4;
-      --sand:       #D5C6B9;
-      --sand-pale:  #ede7e0;
-      --cream:      #F0E9D8;
-      --mauve:      #947D9E;
-      --ink:        #2a2622;
-      --ink-mid:    #5a524a;
-      --ink-light:  #8a8078;
-      --white:      #ffffff;
-      --border:     rgba(213,198,185,0.6);
-      --focus:      rgba(86,138,151,0.25);
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
 
-    html, body {
+    :root {
+      --teal: #568A97;
+      --teal-dark: #3f6e7b;
+      --teal-pale: #e8f2f4;
+      --sand: #D5C6B9;
+      --sand-pale: #ede7e0;
+      --cream: #F0E9D8;
+      --mauve: #947D9E;
+      --ink: #2a2622;
+      --ink-mid: #5a524a;
+      --ink-light: #8a8078;
+      --white: #ffffff;
+      --border: rgba(213, 198, 185, 0.6);
+      --focus: rgba(86, 138, 151, 0.25);
+    }
+
+    html,
+    body {
       min-height: 100%;
       background: var(--cream);
       color: var(--ink);
@@ -54,18 +64,23 @@
     .left::before {
       content: '';
       position: absolute;
-      top: -80px; right: -80px;
-      width: 320px; height: 320px;
+      top: -80px;
+      right: -80px;
+      width: 320px;
+      height: 320px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
     }
+
     .left::after {
       content: '';
       position: absolute;
-      bottom: -60px; left: -40px;
-      width: 240px; height: 240px;
+      bottom: -60px;
+      left: -40px;
+      width: 240px;
+      height: 240px;
       border-radius: 50%;
-      background: rgba(148,125,158,0.15);
+      background: rgba(148, 125, 158, 0.15);
     }
 
     .brand {
@@ -81,6 +96,7 @@
       position: relative;
       z-index: 1;
     }
+
     .left-headline h1 {
       font-family: 'DM Serif Display', Georgia, serif;
       font-size: 40px;
@@ -89,9 +105,10 @@
       letter-spacing: -0.02em;
       margin-bottom: 20px;
     }
+
     .left-headline p {
       font-size: 15px;
-      color: rgba(255,255,255,0.70);
+      color: rgba(255, 255, 255, 0.70);
       line-height: 1.65;
       max-width: 340px;
     }
@@ -101,19 +118,21 @@
       position: relative;
       z-index: 1;
       margin-top: 36px;
-      background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255, 255, 255, 0.10);
+      border: 1px solid rgba(255, 255, 255, 0.18);
       border-radius: 12px;
       padding: 18px 20px;
     }
+
     .sample-label {
       font-size: 11px;
-      font-weight: 500;
+      font-weight: 700;
       letter-spacing: 0.07em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.55);
+      color: rgba(255, 255, 255, 1);
       margin-bottom: 10px;
     }
+
     .sample-list {
       list-style: none;
       display: flex;
@@ -121,20 +140,25 @@
       gap: 6px;
       margin-bottom: 0;
     }
+
     .sample-list li a {
       display: flex;
       align-items: center;
       gap: 8px;
       font-size: 13px;
-      color: rgba(255,255,255,0.85);
+      color: rgba(255, 255, 255, 0.85);
       text-decoration: none;
       transition: color 0.15s;
     }
-    .sample-list li a:hover { color: var(--white); }
+
+    .sample-list li a:hover {
+      color: var(--white);
+    }
+
     .sample-list li a::before {
       content: '↓';
       font-size: 11px;
-      color: rgba(255,255,255,0.45);
+      color: rgba(255, 255, 255, 0.45);
       flex-shrink: 0;
     }
 
@@ -146,35 +170,71 @@
       flex-direction: column;
       gap: 10px;
     }
+
     .left-footer-meta {
       font-size: 12px;
-      color: rgba(255,255,255,0.40);
+      color: rgba(255, 255, 255, 0.40);
     }
 
-    /* reviewer link */
-    .reviewer-link {
+    /* ── reviewer access card ── */
+
+    .reviewer-card {
+      position: relative;
+      z-index: 1;
+
+      margin-top: 18px;
+
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+
+      border-radius: 12px;
+
+      padding: 18px 20px;
+    }
+
+    .reviewer-card-label {
+      font-size: 11px;
+      font-weight: 700;
+
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+
+      color: rgba(255, 255, 255, 1);
+
+      margin-bottom: 8px;
+    }
+
+    .reviewer-card-text {
+      font-size: 13px;
+      line-height: 1.6;
+
+      color: rgba(255, 255, 255, 0.78);
+
+      margin-bottom: 14px;
+    }
+
+    .reviewer-card-btn {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      justify-content: center;
+
+      padding: 10px 14px;
+
+      border-radius: 8px;
+
+      background: var(--mauve);
+
+      color: white;
+      text-decoration: none;
+
       font-size: 13px;
       font-weight: 500;
-      color: rgba(255,255,255,0.75);
-      text-decoration: none;
-      padding: 9px 14px;
-      border: 1px solid rgba(255,255,255,0.22);
-      border-radius: 8px;
-      background: rgba(255,255,255,0.08);
-      transition: background 0.2s, color 0.2s, border-color 0.2s;
-      align-self: flex-start;
+
+      transition: background 0.2s ease;
     }
-    .reviewer-link:hover {
-      background: rgba(255,255,255,0.16);
-      color: var(--white);
-      border-color: rgba(255,255,255,0.35);
-    }
-    .reviewer-link-icon {
-      font-size: 15px;
-      opacity: 0.8;
+
+    .reviewer-card-btn:hover {
+      background: #836d8d;
     }
 
     /* ── right panel ── */
@@ -194,6 +254,7 @@
       margin-bottom: 8px;
       letter-spacing: -0.01em;
     }
+
     .form-sub {
       font-size: 13.5px;
       color: var(--ink-light);
@@ -227,12 +288,16 @@
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
+
     input[type="text"]:focus,
     input[type="email"]:focus {
       border-color: var(--teal);
       box-shadow: 0 0 0 3px var(--focus);
     }
-    input::placeholder { color: var(--ink-light); }
+
+    input::placeholder {
+      color: var(--ink-light);
+    }
 
     /* ── file drop zone ── */
     .drop-zone {
@@ -246,11 +311,13 @@
       transition: border-color 0.2s, background 0.2s;
       position: relative;
     }
+
     .drop-zone:hover,
     .drop-zone.drag-over {
       border-color: var(--teal);
       background: var(--teal-pale);
     }
+
     .drop-zone input[type="file"] {
       position: absolute;
       inset: 0;
@@ -259,15 +326,18 @@
       width: 100%;
       height: 100%;
     }
+
     .drop-label {
       font-size: 14px;
       color: var(--ink-mid);
       pointer-events: none;
     }
+
     .drop-label strong {
       color: var(--teal);
       font-weight: 500;
     }
+
     .drop-hint {
       font-size: 12px;
       color: var(--ink-light);
@@ -282,6 +352,7 @@
       flex-direction: column;
       gap: 6px;
     }
+
     .file-chip {
       display: flex;
       align-items: center;
@@ -292,8 +363,19 @@
       font-size: 13px;
       color: var(--ink-mid);
     }
-    .file-chip .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .file-chip .file-size { color: var(--ink-light); font-size: 11px; white-space: nowrap; }
+
+    .file-chip .file-name {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-chip .file-size {
+      color: var(--ink-light);
+      font-size: 11px;
+      white-space: nowrap;
+    }
 
     /* ── submit button ── */
     .submit-btn {
@@ -311,9 +393,19 @@
       transition: background 0.2s, transform 0.1s;
       letter-spacing: 0.01em;
     }
-    .submit-btn:hover:not(:disabled) { background: var(--teal-dark); }
-    .submit-btn:active:not(:disabled) { transform: scale(0.99); }
-    .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .submit-btn:hover:not(:disabled) {
+      background: var(--teal-dark);
+    }
+
+    .submit-btn:active:not(:disabled) {
+      transform: scale(0.99);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
 
     /* ── status bar ── */
     .status-bar {
@@ -329,230 +421,276 @@
       gap: 10px;
       transition: background 0.3s;
     }
-    .status-bar.processing { background: var(--teal-pale); color: var(--teal-dark); }
-    .status-bar.error-state { background: #fbeef2; color: #8b1a38; }
+
+    .status-bar.processing {
+      background: var(--teal-pale);
+      color: var(--teal-dark);
+    }
+
+    .status-bar.error-state {
+      background: #fbeef2;
+      color: #8b1a38;
+    }
 
     .spinner {
-      width: 14px; height: 14px;
-      border: 2px solid rgba(86,138,151,0.3);
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(86, 138, 151, 0.3);
       border-top-color: var(--teal);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       flex-shrink: 0;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
 
     /* ── result area ── */
-    #result { margin-top: 6px; }
+    #result {
+      margin-top: 6px;
+    }
 
     /* ── responsive ── */
     @media (max-width: 840px) {
-      .page { grid-template-columns: 1fr; }
-      .left { padding: 40px 32px; min-height: auto; }
-      .left-headline h1 { font-size: 28px; }
-      .right { padding: 40px 32px; }
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .left {
+        padding: 40px 32px;
+        min-height: auto;
+      }
+
+      .left-headline h1 {
+        font-size: 28px;
+      }
+
+      .right {
+        padding: 40px 32px;
+      }
     }
   </style>
 </head>
+
 <body>
-<div class="page">
+  <div class="page">
 
-  <!-- left panel -->
-  <div class="left">
-    <div>
-      <div class="brand">Insurance Claim Verification</div>
-    </div>
-
-    <div class="left-headline">
-      <h1>Submit your medical claim</h1>
-      <p>Upload your supporting documents and we will process your claim automatically — most decisions are returned within seconds.</p>
-
-      <!-- ── sample documents ── -->
-      <div class="sample-block">
-        <div class="sample-label">Sample documents for testing</div>
-        <ul class="sample-list">
-          <li><a href="https://drive.google.com/file/d/1zzxLStPasATpxvhh-zR9PNLZ59gw5e5e/view?usp=drive_link" download>01_insurance_claim_form.pdf</a></li>
-          <li><a href="https://drive.google.com/file/d/10-vEHvLMmNTho-MjnKV3WAT3IgCehJdZ/view?usp=drive_link" download>02_hospital_invoice.pdf</a></li>
-          <li><a href="https://drive.google.com/file/d/1GDQLxwKQG-l2yGWmOZAsl2uPXILPvuMD/view?usp=drive_link" download>03_patient_record.pdf</a></li>
-          <li><a href="https://drive.google.com/file/d/1U8ThPieQSrmaNoQ05eTvzdCxoZ7ls2df/view?usp=drive_link" download>04_treatment_summary.pdf</a></li>
-          <li><a href="https://drive.google.com/file/d/1T3SDbSHrqCaeikd0Xad9mc-LvpeXTTcN/view?usp=drive_link" download>05_payslip.pdf</a></li>
-        </ul>
+    <!-- left panel -->
+    <div class="left">
+      <div>
+        <div class="brand">Insurance Claim Verification</div>
       </div>
+
+      <div class="left-headline">
+        <h1>Submit your medical claim</h1>
+        <p>Upload your supporting documents and we will process your claim automatically.</p>
+
+        <!-- ── sample documents ── -->
+        <div class="sample-block">
+          <div class="sample-label">Sample documents for testing</div>
+          <ul class="sample-list">
+            <li><a href="https://drive.google.com/file/d/1zzxLStPasATpxvhh-zR9PNLZ59gw5e5e/view?usp=drive_link"
+                target="_blank">01_insurance_claim_form.pdf</a></li>
+            <li><a href="https://drive.google.com/file/d/1GDQLxwKQG-l2yGWmOZAsl2uPXILPvuMD/view?usp=drive_link"
+                target="_blank">03_patient_record.pdf</a></li>
+            <li><a href="https://drive.google.com/file/d/1U8ThPieQSrmaNoQ05eTvzdCxoZ7ls2df/view?usp=drive_link"
+                target="_blank">04_treatment_summary.pdf</a></li>
+            <li><a href="https://drive.google.com/file/d/1T3SDbSHrqCaeikd0Xad9mc-LvpeXTTcN/view?usp=drive_link"
+                target="_blank">05_payslip.pdf</a></li>
+            <li><a href="https://drive.google.com/file/d/10-vEHvLMmNTho-MjnKV3WAT3IgCehJdZ/view?usp=drive_link"
+                target="_blank">02_hospital_invoice.pdf</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="reviewer-card">
+        <div class="reviewer-card-label">
+          Reviewer Access
+        </div>
+
+        <p class="reviewer-card-text">
+          Use the sample documents above to generate a claim,
+          then open the reviewer dashboard to see the escalation workflow.
+        </p>
+
+        <a href="/review-dashboard" target="_blank" rel="noreferrer" class="reviewer-card-btn">
+          Open Review Dashboard →
+        </a>
+      </div>
+      <div class="left-footer">
+        <div class="left-footer-meta">
+          Secure · Encrypted in transit · HIPAA-aligned
+        </div>
+      </div>
+
+
+    </div>
+    <!-- right panel -->
+    <div class="right">
+      <p class="form-title">Claim submission</p>
+      <p class="form-sub">All fields are required. Accepted format: PDF only, up to 10 files.</p>
+
+      <div class="field-group">
+        <label for="claimant_name">Full name</label>
+        <input type="text" id="claimant_name" name="claimant_name" placeholder="As it appears on your policy" required>
+      </div>
+
+      <div class="field-group">
+        <label for="claimant_email">Email address</label>
+        <input type="email" id="claimant_email" name="claimant_email" placeholder="For status notifications" required>
+      </div>
+
+      <div class="field-group">
+        <label>Supporting documents</label>
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="files" name="documents" accept="application/pdf" multiple>
+          <p class="drop-label">Drop files here or <strong>browse</strong></p>
+          <p class="drop-hint">Invoice, patient record, insurance form, treatment summary, payslip</p>
+        </div>
+        <div id="file-list"></div>
+      </div>
+
+      <button type="button" class="submit-btn" id="submitBtn">Process claim</button>
+
+      <div class="status-bar" id="status-bar">
+        <span id="status-text">Ready to submit.</span>
+      </div>
+
+      <div id="result"></div>
     </div>
 
-    <div class="left-footer">
-      <!-- reviewer panel link -->
-      <a class="reviewer-link" href="/admin" target="_blank" rel="noreferrer">
-        <span class="reviewer-link-icon">⚙</span>
-        Open claim reviewer's panel
-      </a>
-      <div class="left-footer-meta">Secure &nbsp;&middot;&nbsp; Encrypted in transit &nbsp;&middot;&nbsp; HIPAA-aligned</div>
-    </div>
   </div>
 
-  <!-- right panel -->
-  <div class="right">
-    <p class="form-title">Claim submission</p>
-    <p class="form-sub">All fields are required. Accepted format: PDF only, up to 10 files.</p>
+  <script>
+    const fileInput = document.getElementById('files');
+    const fileList = document.getElementById('file-list');
+    const dropZone = document.getElementById('drop-zone');
+    const submitBtn = document.getElementById('submitBtn');
+    const statusBar = document.getElementById('status-bar');
+    const statusText = document.getElementById('status-text');
+    const result = document.getElementById('result');
 
-    <div class="field-group">
-      <label for="claimant_name">Full name</label>
-      <input type="text" id="claimant_name" name="claimant_name" placeholder="As it appears on your policy" required>
-    </div>
+    function formatBytes(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
+      return (b / (1024 * 1024)).toFixed(1) + ' MB';
+    }
 
-    <div class="field-group">
-      <label for="claimant_email">Email address</label>
-      <input type="email" id="claimant_email" name="claimant_email" placeholder="For status notifications" required>
-    </div>
+    function renderFileList(files) {
+      fileList.innerHTML = '';
+      Array.from(files).forEach(f => {
+        const chip = document.createElement('div');
+        chip.className = 'file-chip';
+        chip.innerHTML = `<span class="file-name">${f.name}</span><span class="file-size">${formatBytes(f.size)}</span>`;
+        fileList.appendChild(chip);
+      });
+    }
 
-    <div class="field-group">
-      <label>Supporting documents</label>
-      <div class="drop-zone" id="drop-zone">
-        <input type="file" id="files" name="documents" accept="application/pdf" multiple>
-        <p class="drop-label">Drop files here or <strong>browse</strong></p>
-        <p class="drop-hint">Invoice, patient record, insurance form, treatment summary, payslip</p>
-      </div>
-      <div id="file-list"></div>
-    </div>
+    fileInput.addEventListener('change', () => renderFileList(fileInput.files));
 
-    <button type="button" class="submit-btn" id="submitBtn">Process claim</button>
-
-    <div class="status-bar" id="status-bar">
-      <span id="status-text">Ready to submit.</span>
-    </div>
-
-    <div id="result"></div>
-  </div>
-
-</div>
-
-<script>
-  const fileInput    = document.getElementById('files');
-  const fileList     = document.getElementById('file-list');
-  const dropZone     = document.getElementById('drop-zone');
-  const submitBtn    = document.getElementById('submitBtn');
-  const statusBar    = document.getElementById('status-bar');
-  const statusText   = document.getElementById('status-text');
-  const result       = document.getElementById('result');
-
-  function formatBytes(b) {
-    if (b < 1024) return b + ' B';
-    if (b < 1024 * 1024) return (b / 1024).toFixed(0) + ' KB';
-    return (b / (1024 * 1024)).toFixed(1) + ' MB';
-  }
-
-  function renderFileList(files) {
-    fileList.innerHTML = '';
-    Array.from(files).forEach(f => {
-      const chip = document.createElement('div');
-      chip.className = 'file-chip';
-      chip.innerHTML = `<span class="file-name">${f.name}</span><span class="file-size">${formatBytes(f.size)}</span>`;
-      fileList.appendChild(chip);
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const dt = e.dataTransfer;
+      if (dt && dt.files.length) {
+        fileInput.files = dt.files;
+        renderFileList(dt.files);
+      }
     });
-  }
 
-  fileInput.addEventListener('change', () => renderFileList(fileInput.files));
-
-  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-  dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const dt = e.dataTransfer;
-    if (dt && dt.files.length) {
-      fileInput.files = dt.files;
-      renderFileList(dt.files);
-    }
-  });
-
-  function setStatus(msg, mode) {
-    statusText.textContent = msg;
-    statusBar.className = 'status-bar' + (mode ? ' ' + mode : '');
-    const existing = statusBar.querySelector('.spinner');
-    if (mode === 'processing') {
-      if (!existing) {
-        const s = document.createElement('div');
-        s.className = 'spinner';
-        statusBar.prepend(s);
+    function setStatus(msg, mode) {
+      statusText.textContent = msg;
+      statusBar.className = 'status-bar' + (mode ? ' ' + mode : '');
+      const existing = statusBar.querySelector('.spinner');
+      if (mode === 'processing') {
+        if (!existing) {
+          const s = document.createElement('div');
+          s.className = 'spinner';
+          statusBar.prepend(s);
+        }
+      } else {
+        if (existing) existing.remove();
       }
-    } else {
-      if (existing) existing.remove();
     }
-  }
 
-  submitBtn.addEventListener('click', async () => {
-    const name  = document.getElementById('claimant_name').value.trim();
-    const email = document.getElementById('claimant_email').value.trim();
+    submitBtn.addEventListener('click', async () => {
+      const name = document.getElementById('claimant_name').value.trim();
+      const email = document.getElementById('claimant_email').value.trim();
 
-    if (!name || !email) { setStatus('Please fill in your name and email.', 'error-state'); return; }
-    if (!fileInput.files.length) { setStatus('Please select at least one PDF.', 'error-state'); return; }
+      if (!name || !email) { setStatus('Please fill in your name and email.', 'error-state'); return; }
+      if (!fileInput.files.length) { setStatus('Please select at least one PDF.', 'error-state'); return; }
 
-    const fd = new FormData();
-    fd.append('claimant_name',  name);
-    fd.append('claimant_email', email);
-    for (const f of fileInput.files) fd.append('documents', f, f.name);
+      const fd = new FormData();
+      fd.append('claimant_name', name);
+      fd.append('claimant_email', email);
+      for (const f of fileInput.files) fd.append('documents', f, f.name);
 
-    submitBtn.disabled = true;
-    result.innerHTML   = '';
-    setStatus('Uploading documents...', 'processing');
+      submitBtn.disabled = true;
+      result.innerHTML = '';
+      setStatus('Uploading documents...', 'processing');
 
-    try {
-      const res = await fetch('/process-claim', { method: 'POST', body: fd });
-      if (!res.ok) {
-        const txt = await res.text();
-        setStatus('Upload failed — ' + res.status, 'error-state');
-        result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${txt}</pre>`;
-        return;
-      }
+      try {
+        const res = await fetch('/process-claim', { method: 'POST', body: fd });
+        if (!res.ok) {
+          const txt = await res.text();
+          setStatus('Upload failed — ' + res.status, 'error-state');
+          result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${txt}</pre>`;
+          return;
+        }
 
-      const reader  = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer    = '';
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split('\n\n');
-        buffer = events.pop() || '';
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split('\n\n');
+          buffer = events.pop() || '';
 
-        for (const block of events) {
-          const line = block.split('\n').find(l => l.startsWith('data: '));
-          if (!line) continue;
-          const event = JSON.parse(line.slice(6));
+          for (const block of events) {
+            const line = block.split('\n').find(l => l.startsWith('data: '));
+            if (!line) continue;
+            const event = JSON.parse(line.slice(6));
 
-          if (event.stage === 'uploading') {
-            setStatus('Uploading documents to secure storage...', 'processing');
-          } else if (event.stage === 'parsing') {
-            setStatus('Classifying and extracting document fields...', 'processing');
-          } else if (event.stage === 'analysing') {
-            setStatus('Running approval and risk analysis...', 'processing');
-          } else if (event.stage === 'error') {
-            setStatus('Processing error — please try again.', 'error-state');
-            result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${JSON.stringify(event, null, 2)}</pre>`;
-          } else if (event.stage === 'complete') {
-            setStatus('Done.');
-            try {
-              const renderRes = await fetch('/render-user-result', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(event)
-              });
-              const html = await renderRes.text();
-              result.innerHTML = html;
-            } catch {
-              result.innerHTML = `<pre style="font-size:13px;margin-top:12px">${JSON.stringify(event.user_result, null, 2)}</pre>`;
+            if (event.stage === 'uploading') {
+              setStatus('Uploading documents to secure storage...', 'processing');
+            } else if (event.stage === 'parsing') {
+              setStatus('Classifying and extracting document fields...', 'processing');
+            } else if (event.stage === 'analysing') {
+              setStatus('Running approval and risk analysis...', 'processing');
+            } else if (event.stage === 'error') {
+              setStatus('Processing error — please try again.', 'error-state');
+              result.innerHTML = `<pre style="color:#8b1a38;font-size:13px;margin-top:12px">${JSON.stringify(event, null, 2)}</pre>`;
+            } else if (event.stage === 'complete') {
+              setStatus('Done.');
+              try {
+                const renderRes = await fetch('/render-user-result', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(event)
+                });
+                const html = await renderRes.text();
+                result.innerHTML = html;
+              } catch {
+                result.innerHTML = `<pre style="font-size:13px;margin-top:12px">${JSON.stringify(event.user_result, null, 2)}</pre>`;
+              }
             }
           }
         }
+      } catch (err) {
+        setStatus('Connection error — ' + err.message, 'error-state');
+      } finally {
+        submitBtn.disabled = false;
       }
-    } catch (err) {
-      setStatus('Connection error — ' + err.message, 'error-state');
-    } finally {
-      submitBtn.disabled = false;
-    }
-  });
-</script>
+    });
+  </script>
 </body>
+
 </html>
