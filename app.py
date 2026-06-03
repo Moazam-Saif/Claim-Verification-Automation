@@ -31,13 +31,28 @@ from concurrent.futures import ThreadPoolExecutor
 from flask import Flask, Response, jsonify, render_template, request, stream_with_context
 from dotenv import load_dotenv
 
+print("1", flush=True)
 from pdf_reader import extract_text_from_bytes
+
+print("2", flush=True)
 from validators import run_hard_rules, POLICY_RULES
+
+print("3", flush=True)
 from parser import parse_document
+
+print("4", flush=True)
 from defender import run_defender
+
+print("5", flush=True)
 from prosecutor import run_prosecutor, merge_hard_rule_flags
+
+print("6", flush=True)
 from synthesiser import synthesise
+
+print("7", flush=True)
 from supabase_storage import upload_claim_files
+
+print("8", flush=True)
 from db import (
     create_claim,
     create_claimant,
@@ -48,6 +63,8 @@ from db import (
     save_storage_paths,
     worker_decision,
 )
+
+print("9", flush=True)
 
 load_dotenv()
 
