@@ -53,7 +53,7 @@ def _get_client():
 
 
 def call_claude(system_prompt: str, user_prompt: str,
-                max_tokens: int = 1200, retries: int = 2) -> dict:
+                max_tokens: int = 1500, retries: int = 2) -> dict:
     last_error = None
 
     for attempt in range(retries + 1):
