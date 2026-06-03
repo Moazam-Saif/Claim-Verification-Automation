@@ -44,7 +44,9 @@ def _get_client():
         location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
         credentials=credentials,
         http_options=types.HttpOptions(
-        timeout=120000  # 120 seconds in milliseconds
+        timeout=120000,
+        async_client_args={"transport": httpx.HTTPTransport(retries=0)},
+        client_args={"transport": httpx.HTTPTransport(retries=0)}
         )
 
     )
