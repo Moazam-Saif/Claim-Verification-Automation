@@ -114,7 +114,7 @@ def parse_document(raw_text: str, filename: str) -> dict:
     result = call_claude(
         system_prompt=SYSTEM_PROMPT,
         user_prompt=USER_TEMPLATE.format(raw_text=text_sample),
-        max_tokens=4000
+        max_tokens=1500
     )
 
     if result["ok"]:
