@@ -70,7 +70,7 @@ def run_defender(parsed_docs: list, policy_rules: dict) -> dict:
             claim_json=json.dumps(claim_summary, indent=2),
             policy_json=json.dumps(policy_rules, indent=2)
         ),
-        max_tokens=1200
+        max_tokens=2000
     )
 
     if result["ok"]:
