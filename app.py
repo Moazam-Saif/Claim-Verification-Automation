@@ -275,11 +275,10 @@ def process_claim():
                 "message": f"Classifying and extracting fields from {len(raw_docs)} document(s)..."
             })
 
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                parsed_docs = list(executor.map(
-                    lambda doc: parse_document(doc["text"], doc["filename"]),
-                    raw_docs
-                ))
+            parsed_docs = [
+                parse_document(doc["text"], doc["filename"])
+                for doc in raw_docs
+            ]
             
             # NEW: log any individual parse failures (they're already marked unusable,
             # but we want the errors in backend logs)
@@ -420,7 +419,7 @@ def worker_action():
 # ── Entry point ───────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
-    required_env = ["GOOGLE_API_KEY", "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "DATABASE_URL"]
+    required_env = ["GCP_SERVICE_ACCOUNT_JSON", "SUPABASE_URL", "SUPABASE_SERVICE_KEY", "DATABASE_URL"]
     missing = [k for k in required_env if not os.environ.get(k)]
     if missing:
         print(f"WARNING: Missing env vars: {', '.join(missing)}")
