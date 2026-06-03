@@ -76,14 +76,6 @@
       position: relative;
       z-index: 1;
     }
-    .brand-sub {
-      font-size: 12px;
-      color: rgba(255,255,255,0.55);
-      font-weight: 300;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
 
     .left-headline {
       position: relative;
@@ -104,11 +96,85 @@
       max-width: 340px;
     }
 
-    .left-footer {
-      font-size: 12px;
-      color: rgba(255,255,255,0.40);
+    /* ── sample docs block ── */
+    .sample-block {
       position: relative;
       z-index: 1;
+      margin-top: 36px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .sample-label {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 10px;
+    }
+    .sample-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 0;
+    }
+    .sample-list li a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .sample-list li a:hover { color: var(--white); }
+    .sample-list li a::before {
+      content: '↓';
+      font-size: 11px;
+      color: rgba(255,255,255,0.45);
+      flex-shrink: 0;
+    }
+
+    /* ── left footer ── */
+    .left-footer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .left-footer-meta {
+      font-size: 12px;
+      color: rgba(255,255,255,0.40);
+    }
+
+    /* reviewer link */
+    .reviewer-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      padding: 9px 14px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.08);
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      align-self: flex-start;
+    }
+    .reviewer-link:hover {
+      background: rgba(255,255,255,0.16);
+      color: var(--white);
+      border-color: rgba(255,255,255,0.35);
+    }
+    .reviewer-link-icon {
+      font-size: 15px;
+      opacity: 0.8;
     }
 
     /* ── right panel ── */
@@ -282,7 +348,7 @@
     /* ── responsive ── */
     @media (max-width: 840px) {
       .page { grid-template-columns: 1fr; }
-      .left { padding: 40px 32px; min-height: 200px; }
+      .left { padding: 40px 32px; min-height: auto; }
       .left-headline h1 { font-size: 28px; }
       .right { padding: 40px 32px; }
     }
@@ -300,9 +366,28 @@
     <div class="left-headline">
       <h1>Submit your medical claim</h1>
       <p>Upload your supporting documents and we will process your claim automatically — most decisions are returned within seconds.</p>
+
+      <!-- ── sample documents ── -->
+      <div class="sample-block">
+        <div class="sample-label">Sample documents for testing</div>
+        <ul class="sample-list">
+          <li><a href="/static/samples/01_insurance_claim_form.pdf" download>01_insurance_claim_form.pdf</a></li>
+          <li><a href="/static/samples/02_hospital_invoice.pdf" download>02_hospital_invoice.pdf</a></li>
+          <li><a href="/static/samples/03_patient_record.pdf" download>03_patient_record.pdf</a></li>
+          <li><a href="/static/samples/04_treatment_summary.pdf" download>04_treatment_summary.pdf</a></li>
+          <li><a href="/static/samples/05_payslip.pdf" download>05_payslip.pdf</a></li>
+        </ul>
+      </div>
     </div>
 
-    <div class="left-footer">Secure &nbsp;&middot;&nbsp; Encrypted in transit &nbsp;&middot;&nbsp; HIPAA-aligned</div>
+    <div class="left-footer">
+      <!-- reviewer panel link -->
+      <a class="reviewer-link" href="/admin" target="_blank" rel="noreferrer">
+        <span class="reviewer-link-icon">⚙</span>
+        Open claim reviewer's panel
+      </a>
+      <div class="left-footer-meta">Secure &nbsp;&middot;&nbsp; Encrypted in transit &nbsp;&middot;&nbsp; HIPAA-aligned</div>
+    </div>
   </div>
 
   <!-- right panel -->
@@ -383,7 +468,6 @@
   function setStatus(msg, mode) {
     statusText.textContent = msg;
     statusBar.className = 'status-bar' + (mode ? ' ' + mode : '');
-    // show/hide spinner
     const existing = statusBar.querySelector('.spinner');
     if (mode === 'processing') {
       if (!existing) {
