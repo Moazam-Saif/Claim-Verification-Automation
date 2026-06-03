@@ -39,6 +39,7 @@ from db import (
     save_result,
     set_claim_status,
     save_storage_paths,                           # ← new db function (see db.py)
+    worker_decision,  
 )
 
 load_dotenv()
@@ -346,6 +347,18 @@ def health():
         "model":  os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
     })
 
+@app.route('/worker-action', methods=['POST'])
+def worker_action():
+    data     = request.get_json(force=True)
+    claim_id = data.get('claim_id')
+    decision = data.get('decision')   # 'approved' | 'rejected' | 'escalated'
+    notes    = data.get('notes', '')
+    if not claim_id or not decision:
+        return jsonify({'error': 'claim_id and decision are required'}), 400
+    if decision not in ('approved', 'rejected', 'escalated'):
+        return jsonify({'error': 'decision must be approved, rejected, or escalated'}), 400
+    worker_decision(claim_id, decision, notes)
+    return jsonify({'ok': True, 'claim_id': claim_id, 'decision': decision})
 
 # ── Entry point ───────────────────────────────────────────────────────────────
 

@@ -3,21 +3,68 @@ agents/synthesiser.py
 
 Stage 4: Pure Python synthesis layer. No AI call.
 
-This is the file's most important architectural improvement:
-  "AI reasons. Python decides."
+"AI reasons. Python decides."
 
 Responsibilities:
 1. Apply escalation rules deterministically
 2. Compute verdict: RECOMMEND_APPROVE | MANUAL_REVIEW | RECOMMEND_REJECT
-3. Build the human checklist from actual flag data (not AI text generation)
-4. Produce the final triage card object that the frontend renders
+3. Compute confidence score from weighted conditions (no AI scores used)
+4. Build the human checklist from actual flag data
+5. Produce the final triage card object that the frontend renders
 
-Why no AI here:
-- Verdicts need to be auditable and deterministic
-- The same inputs must always produce the same verdict
-- AI adds latency and non-determinism to a decision that should be rule-based
-- The checklist is built from structured flags — no need for AI prose generation
+── Confidence scoring ────────────────────────────────────────────────────────
+
+Confidence is computed deterministically from weighted deductions.
+Score starts at 1.0; each failed condition subtracts its weight.
+This replaces the original approach of averaging AI confidence scores,
+which were unreliable and not grounded in specific policy criteria.
+
+Hard-rule deductions (from validators.py flag IDs):
+    HR001 — Required document missing         −0.15 per missing doc type
+    HR002 — Claim amount exceeds maximum      −0.15
+    HR003 — Treatment before coverage start   −0.20  (structurally invalid)
+    HR004 — Treatment after policy expiry     −0.20  (structurally invalid)
+    HR005 — Invoice before treatment date     −0.10  (known fraud pattern)
+    HR006 — Patient name mismatch             −0.15  (identity signal)
+    HR007 — Out-of-network physician          −0.05
+
+AI-generated flag deductions (non-hard-rule flags only):
+    HIGH severity                             −0.12 per flag
+    MEDIUM severity                           −0.06 per flag
+    LOW severity                              −0.02 per flag
+
+Other deductions:
+    Defender unable_to_defend item            −0.05 per item
+    AI agent failure (error)                  −0.10 per failed agent
+
+Confidence tiers:
+    ≥ 0.75 → HIGH
+    0.45 – 0.74 → MEDIUM
+    < 0.45 → LOW
 """
+
+# ── Confidence weight tables ───────────────────────────────────────────────────
+
+# Deduction per hard-rule flag ID (from validators.py)
+HARD_RULE_WEIGHTS = {
+    "HR001": 0.15,   # Required document missing (charged per occurrence)
+    "HR002": 0.15,   # Claim amount exceeds policy maximum
+    "HR003": 0.20,   # Treatment before coverage start — structurally invalid
+    "HR004": 0.20,   # Treatment after policy expiry — structurally invalid
+    "HR005": 0.10,   # Invoice issued before treatment (pre-treatment billing)
+    "HR006": 0.15,   # Patient name mismatch across documents
+    "HR007": 0.05,   # Out-of-network physician
+}
+
+# Deduction per AI-generated flag, by severity (applied only when source != "hard_rule")
+AI_FLAG_WEIGHTS = {
+    "HIGH":   0.12,
+    "MEDIUM": 0.06,
+    "LOW":    0.02,
+}
+
+UNABLE_TO_DEFEND_WEIGHT = 0.05   # Per item the defender could not address
+AGENT_ERROR_WEIGHT      = 0.10   # Per AI agent that failed to run
 
 
 def synthesise(defender: dict, prosecutor: dict, parsed_docs: list) -> dict:
@@ -27,7 +74,7 @@ def synthesise(defender: dict, prosecutor: dict, parsed_docs: list) -> dict:
     Args:
         defender:    output from defender.py
         prosecutor:  output from prosecutor.py (after hard rule flags merged in)
-        parsed_docs: list of parsed document dicts (for context in checklist)
+        parsed_docs: list of parsed document dicts (for checklist context)
 
     Returns:
         A triage card dict ready to be returned to the frontend as JSON.
@@ -36,7 +83,7 @@ def synthesise(defender: dict, prosecutor: dict, parsed_docs: list) -> dict:
     summary = prosecutor.get("summary", {"HIGH": 0, "MEDIUM": 0, "LOW": 0})
 
     verdict    = _apply_escalation_rules(defender, prosecutor, summary)
-    confidence = _compute_confidence(verdict, defender, prosecutor, summary)
+    confidence = _compute_confidence(defender, prosecutor, flags)
     checklist  = _build_checklist(flags, parsed_docs)
     reasoning  = _build_reasoning(verdict, summary, defender)
 
@@ -102,42 +149,55 @@ def _apply_escalation_rules(defender: dict, prosecutor: dict, summary: dict) -> 
     return "RECOMMEND_APPROVE"
 
 
-# ── Confidence calculation ────────────────────────────────────────────────────
+# ── Confidence calculation (weighted, deterministic) ─────────────────────────
 
-def _compute_confidence(verdict: str, defender: dict,
-                         prosecutor: dict, summary: dict) -> dict:
+def _compute_confidence(defender: dict, prosecutor: dict, flags: list) -> dict:
     """
-    Compute a confidence tier and score based on:
-    - Verdict type
-    - Number and severity of flags
-    - Defender/Prosecutor confidence scores
-    - Whether any agents errored
+    Compute confidence score from weighted condition deductions.
+
+    Starts at 1.0 (perfect) and deducts for each failed condition.
+    Uses the flag IDs from validators.py and AI flag severities.
+    Does NOT use the AI agents' self-reported confidence scores — those
+    are opaque and unreliable as a confidence signal.
+
+    Returns { "score": float, "tier": "HIGH"|"MEDIUM"|"LOW" }.
     """
-    if defender.get("agent_error") or prosecutor.get("agent_error"):
-        return {"tier": "LOW", "score": 0.2}
+    score = 1.0
 
-    d_conf = defender.get("confidence",   0.5)
-    p_conf = prosecutor.get("confidence", 0.5)
+    for flag in flags:
+        flag_id  = flag.get("id", "")
+        severity = flag.get("severity", "LOW")
+        source   = flag.get("source", "ai")
 
-    high   = summary.get("HIGH",   0)
-    medium = summary.get("MEDIUM", 0)
-    low    = summary.get("LOW",    0)
+        if source == "hard_rule":
+            # Structured deduction — exact weight per rule
+            deduction = HARD_RULE_WEIGHTS.get(flag_id, 0.05)
+        else:
+            # AI-generated flag — weight by severity
+            deduction = AI_FLAG_WEIGHTS.get(severity, 0.02)
 
-    # Penalise score per flag
-    penalty = (high * 0.25) + (medium * 0.10) + (low * 0.03)
-    base    = (d_conf + p_conf) / 2
-    score   = max(0.05, min(0.99, base - penalty))
+        score -= deduction
 
-    if verdict == "RECOMMEND_APPROVE" and score >= 0.70:
+    # Deduct for each item the defender explicitly couldn't address
+    unable = defender.get("unable_to_defend") or []
+    score -= len(unable) * UNABLE_TO_DEFEND_WEIGHT
+
+    # Deduct for each AI agent that failed to run
+    if defender.get("agent_error"):
+        score -= AGENT_ERROR_WEIGHT
+    if prosecutor.get("agent_error"):
+        score -= AGENT_ERROR_WEIGHT
+
+    score = max(0.05, min(0.99, round(score, 2)))
+
+    if score >= 0.75:
         tier = "HIGH"
-    elif verdict == "RECOMMEND_REJECT" and high > 0:
-        tier = "HIGH"   # High confidence in rejection
-    elif score >= 0.50:
+    elif score >= 0.45:
         tier = "MEDIUM"
     else:
         tier = "LOW"
 
-    return {"tier": tier, "score": round(score, 2)}
+    return {"tier": tier, "score": score}
 
 
 # ── Human checklist builder ───────────────────────────────────────────────────
@@ -146,24 +206,20 @@ def _build_checklist(flags: list, parsed_docs: list) -> list:
     """
     Build a prioritised human checklist from actual flag data.
     Maximum 3 items. Ordered: HIGH first, then MEDIUM, then LOW.
-    Each item is specific and actionable — derived from the flag's recommended_check field.
     """
-    # Sort: HIGH → MEDIUM → LOW
     severity_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     sorted_flags   = sorted(flags, key=lambda f: severity_order.get(f.get("severity", "LOW"), 2))
 
     checklist = []
-    for i, flag in enumerate(sorted_flags[:3]):  # Hard max 3
+    for i, flag in enumerate(sorted_flags[:3]):
         severity   = flag.get("severity", "LOW")
         issue      = flag.get("issue", "")
         rec_check  = flag.get("recommended_check", "")
         evidence   = flag.get("evidence", [])
         fraud_pat  = flag.get("fraud_pattern")
 
-        # Build the action text
         action = rec_check if rec_check else f"Review: {issue}"
 
-        # Build the why text
         if fraud_pat:
             why = f"This matches a known pattern: '{fraud_pat}'. Confirming prevents wrongful approval."
         elif severity == "HIGH":
@@ -173,7 +229,6 @@ def _build_checklist(flags: list, parsed_docs: list) -> list:
         else:
             why = "Minor issue worth confirming before final decision."
 
-        # Estimate time based on what needs to be done
         est_minutes = _estimate_item_time(severity, rec_check)
 
         checklist.append({
@@ -185,7 +240,6 @@ def _build_checklist(flags: list, parsed_docs: list) -> list:
             "estimated_minutes": est_minutes
         })
 
-    # If no flags but we still need a checklist item (e.g. RECOMMEND_APPROVE)
     if not checklist:
         checklist.append({
             "priority":          1,
@@ -200,10 +254,9 @@ def _build_checklist(flags: list, parsed_docs: list) -> list:
 
 
 def _estimate_item_time(severity: str, action_text: str) -> int:
-    """Rough time estimate per checklist item in minutes."""
     action_lower = (action_text or "").lower()
     if "id" in action_lower or "identity" in action_lower or "contact" in action_lower:
-        return 5  # Needs external verification
+        return 5
     if severity == "HIGH":
         return 4
     if severity == "MEDIUM":
@@ -212,7 +265,6 @@ def _estimate_item_time(severity: str, action_text: str) -> int:
 
 
 def _estimate_review_time(checklist: list, verdict: str) -> int:
-    """Total estimated review time in minutes."""
     base = sum(item.get("estimated_minutes", 2) for item in checklist)
     if verdict == "RECOMMEND_APPROVE":
         return max(2, base)
@@ -245,7 +297,6 @@ def _build_reasoning(verdict: str, summary: dict, defender: dict) -> str:
             f"Manual review required due to {reason_str}. "
             f"Please work through the checklist below before making a final decision."
         )
-    # RECOMMEND_APPROVE
     flag_note = f"{low} minor note(s) logged." if low > 0 else "No issues found."
     return (
         f"Claim appears consistent across all submitted documents. "
@@ -255,13 +306,11 @@ def _build_reasoning(verdict: str, summary: dict, defender: dict) -> str:
 
 
 def _top_approval_factors(defender: dict) -> list:
-    """Return top 3 approval factors as short strings."""
     factors = defender.get("approval_factors", [])
     return [f.get("reason", "") for f in factors[:3] if f.get("reason")]
 
 
 def _top_risk_factors(flags: list) -> list:
-    """Return top 3 risk factors as short strings."""
     severity_order = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     sorted_flags   = sorted(flags, key=lambda f: severity_order.get(f.get("severity", "LOW"), 2))
     return [f.get("issue", "") for f in sorted_flags[:3] if f.get("issue")]
@@ -280,7 +329,6 @@ def _escalation_reason(verdict: str, summary: dict, flags: list) -> str | None:
 
 
 def _doc_status(parsed_docs: list) -> list:
-    """Summary of which documents were processed and which were skipped."""
     return [
         {
             "filename": d.get("filename"),
