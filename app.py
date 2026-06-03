@@ -275,7 +275,7 @@ def process_claim():
                 "message": f"Classifying and extracting fields from {len(raw_docs)} document(s)..."
             })
 
-            with ThreadPoolExecutor() as executor:
+            with ThreadPoolExecutor(max_workers=2) as executor:
                 parsed_docs = list(executor.map(
                     lambda doc: parse_document(doc["text"], doc["filename"]),
                     raw_docs
