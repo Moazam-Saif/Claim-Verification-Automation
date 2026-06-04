@@ -62,67 +62,19 @@ def call_claude(system_prompt: str, user_prompt: str,
             client = _get_client()
 
             response = client.models.generate_content(
-            model=_MODEL_NAME,
-            contents=user_prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                max_output_tokens=max_tokens,
-                response_mime_type="application/json",
-                thinking_config=types.ThinkingConfig(
-                    thinking_budget=0
+                model=_MODEL_NAME,
+                contents=user_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    max_output_tokens=max_tokens,
+                    response_mime_type="application/json",
+                    thinking_config=types.ThinkingConfig(
+                        thinking_budget=0
                     )
                 )
             )
 
             raw = response.text.strip()
-            print(
-            f"[RAW LEN] {len(raw)} chars",
-            flush=True
-            )
-
-            finish_reason = "UNKNOWN"
-            usage_info = "UNKNOWN"
-
-            try:
-                finish_reason = str(response.candidates[0].finish_reason)
-            except Exception:
-                pass
-
-            try:
-                usage_info = str(response.usage_metadata)
-            except Exception:
-                pass
-
-            debug_content = f"""
-            === FINISH REASON ===
-            {finish_reason}
-
-            === USAGE ===
-            {usage_info}
-
-            === RAW RESPONSE ===
-            {raw}
-            """
-
-            try:
-                import uuid
-                from supabase_storage import _get_client as _get_supabase
-
-                debug_path = f"debug/{uuid.uuid4()}.txt"
-
-                _get_supabase().storage.from_("claims").upload(
-                    path=debug_path,
-                    file=debug_content.encode("utf-8"),   # changed
-                    file_options={
-                        "content-type": "text/plain",
-                        "upsert": "true"
-                    }
-                )
-
-                print(f"[DEBUG UPLOADED] {debug_path}", flush=True)
-
-            except Exception as e:
-                print(f"[DEBUG UPLOAD FAILED] {e}", flush=True)
 
             if raw.startswith("```"):
                 parts = raw.split("```")
