@@ -72,8 +72,18 @@ def call_claude(system_prompt: str, user_prompt: str,
             )
 
             raw = response.text.strip()
-            raw = response.text.strip()
-            print(f"[RAW RESPONSE LENGTH] {len(raw)} chars", flush=True)
+            try:
+                import uuid
+                from supabase_storage import _get_client as _get_supabase
+                debug_path = f"debug/{uuid.uuid4()}.txt"
+                _get_supabase().storage.from_("claims").upload(
+                    path=debug_path,
+                    file=raw.encode("utf-8"),
+                    file_options={"content-type": "text/plain", "upsert": "true"}
+                )
+                print(f"[DEBUG UPLOADED] {debug_path}", flush=True)
+            except Exception as e:
+                print(f"[DEBUG UPLOAD FAILED] {e}", flush=True)
 
             if raw.startswith("```"):
                 parts = raw.split("```")
