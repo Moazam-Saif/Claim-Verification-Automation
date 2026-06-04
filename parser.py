@@ -49,6 +49,8 @@ Field extraction rules by document type:
 - employer_name: ONLY extract from payslip documents
 - physician_name: ONLY extract from patient_record, invoice, or treatment_summary
 - For payslip documents: set coverage_start_date, coverage_end_date, treatment_date, invoice_date, invoice_number, diagnosis_code, claim_amount all to null
+- For treatment_summary documents: invoice_date must be null. A treatment summary has a "date issued" field which is NOT an invoice date. Only invoices have invoice_date.
+- invoice_date only exists on invoice documents. Set it to null for all other document types.
 
 Valid document types:
 - invoice

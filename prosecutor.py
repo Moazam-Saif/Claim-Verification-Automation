@@ -31,6 +31,8 @@ Rules:
 - No explanations
 - coverage_start_date and coverage_end_date are only valid when sourced from an insurance_form document. Never use these fields from a payslip or any other document type
 - Do not flag missing fields on document types where those fields are not expected (e.g. a payslip missing a diagnosis_code is not a flag)
+- An invoice date that is AFTER the treatment date is normal and expected. Do not flag this.
+- Only flag invoice_date if it is BEFORE the treatment date (pre-treatment billing fraud pattern)
 
 Severity rules:
 - HIGH = major policy violation or strong fraud indicator. Never auto-approve if HIGH present.
