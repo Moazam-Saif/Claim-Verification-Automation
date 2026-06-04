@@ -40,6 +40,16 @@ Rules:
 - No extra text
 - Output must match schema exactly
 
+Field extraction rules by document type:
+- coverage_start_date and coverage_end_date: ONLY extract from insurance_form documents. Never extract from payslips, invoices, or any other type. A payslip pay period is NOT a coverage date.
+- invoice_date: the date the invoice was ISSUED, not the treatment date
+- treatment_date: the date the patient received treatment or was admitted
+- claim_amount: the total amount claimed or billed, not salary or any other amount
+- monthly_salary: ONLY extract from payslip documents
+- employer_name: ONLY extract from payslip documents
+- physician_name: ONLY extract from patient_record, invoice, or treatment_summary
+- For payslip documents: set coverage_start_date, coverage_end_date, treatment_date, invoice_date, invoice_number, diagnosis_code, claim_amount all to null
+
 Valid document types:
 - invoice
 - patient_record

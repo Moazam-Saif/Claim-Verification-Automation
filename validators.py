@@ -110,8 +110,8 @@ def _check_claim_amount(docs: list) -> list:
 def _check_coverage_dates(docs: list) -> list:
     flags = []
     treatment = _find_field(docs, "treatment_date")
-    cov_start = _find_field(docs, "coverage_start_date")
-    cov_end   = _find_field(docs, "coverage_end_date")
+    cov_start = _find_field_from_type(docs, "coverage_start_date", "insurance_form")
+    cov_end   = _find_field_from_type(docs, "coverage_end_date",   "insurance_form")
 
     if not (treatment and cov_start and cov_end):
         return flags
@@ -276,6 +276,18 @@ def _check_network_physician(docs: list) -> list:
 def _find_field(docs: list, field_name: str) -> dict | None:
     for doc in docs:
         if doc.get("unusable"):
+            continue
+        value = doc.get("fields", {}).get(field_name)
+        if value is not None:
+            return {"value": str(value), "doc_type": doc.get("doc_type", "unknown")}
+    return None
+
+def _find_field_from_type(docs: list, field_name: str, doc_type: str) -> dict | None:
+    """Like _find_field but only searches documents of a specific type."""
+    for doc in docs:
+        if doc.get("unusable"):
+            continue
+        if doc.get("doc_type") != doc_type:
             continue
         value = doc.get("fields", {}).get(field_name)
         if value is not None:
