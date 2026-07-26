@@ -2,22 +2,23 @@
 claude_client.py
 
 Wrapper around Vertex AI Gemini via the unified google-genai SDK.
-Auth: GCP_SERVICE_ACCOUNT_JSON env var (full JSON string, not a file path).
-Required env vars: GCP_SERVICE_ACCOUNT_JSON, GOOGLE_CLOUD_LOCATION (optional, defaults us-central1)
-All agents call call_claude() — nothing else changes.
 
-Fix applied:
-    Removed response_mime_type="application/json" from GenerateContentConfig.
-    When set, the Vertex AI SDK serialises the system_instruction as JSON internally
-    and chokes on hyphen sequences like YYYY-MM-DD at character 177, producing
-    "Invalid \\escape" errors. Removing it lets the model return plain text which
-    _parse_json() handles correctly. JSON output quality is unchanged.
+Auth: GCP_SERVICE_ACCOUNT_JSON env var — base64-encoded contents of the
+service account JSON file. Base64 encoding prevents the private key's \n
+sequences from being corrupted by Render's environment variable input.
 
-    Client is now cached at module level (not recreated per call) to avoid
-    the overhead of parsing the service account JSON and building credentials
-    on every single API call.
+To encode locally (PowerShell):
+    [Convert]::ToBase64String(
+        [System.IO.File]::ReadAllBytes("path\\to\\service-account.json")
+    ) | Set-Clipboard
+
+Required env vars:
+    GCP_SERVICE_ACCOUNT_JSON    base64-encoded service account JSON
+    GOOGLE_CLOUD_LOCATION       optional, defaults to us-central1
+    GEMINI_MODEL                optional, defaults to gemini-2.5-flash
 """
 
+import base64
 import json
 import os
 import re
@@ -46,11 +47,18 @@ def _get_client():
     if genai is None:
         raise RuntimeError("google-genai SDK not installed.")
 
-    raw_json = os.environ.get("GCP_SERVICE_ACCOUNT_JSON")
-    if not raw_json:
+    raw_b64 = os.environ.get("GCP_SERVICE_ACCOUNT_JSON")
+    if not raw_b64:
         raise RuntimeError("GCP_SERVICE_ACCOUNT_JSON env var is not set.")
 
-    service_account_info = json.loads(raw_json)
+    # Decode base64 -> JSON string -> dict
+    # Avoids \n corruption when pasting raw JSON into Render's env var UI
+    try:
+        decoded = base64.b64decode(raw_b64.strip()).decode("utf-8")
+        service_account_info = json.loads(decoded)
+    except Exception as e:
+        raise RuntimeError(f"Failed to decode GCP_SERVICE_ACCOUNT_JSON: {e}")
+
     credentials = service_account.Credentials.from_service_account_info(
         service_account_info,
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
@@ -85,10 +93,9 @@ def call_claude(system_prompt: str, user_prompt: str,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
                     max_output_tokens=max_tokens,
-                    # response_mime_type intentionally removed —
+                    # response_mime_type intentionally omitted --
                     # setting "application/json" causes Vertex AI to serialise
-                    # the system_instruction as JSON internally, which breaks on
-                    # hyphen sequences (e.g. YYYY-MM-DD) with "Invalid \escape".
+                    # the system_instruction as JSON and choke on YYYY-MM-DD hyphens
                     thinking_config=types.ThinkingConfig(
                         thinking_budget=0
                     )
