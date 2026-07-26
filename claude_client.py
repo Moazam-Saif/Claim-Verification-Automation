@@ -5,6 +5,17 @@ Wrapper around Vertex AI Gemini via the unified google-genai SDK.
 Auth: GCP_SERVICE_ACCOUNT_JSON env var (full JSON string, not a file path).
 Required env vars: GCP_SERVICE_ACCOUNT_JSON, GOOGLE_CLOUD_LOCATION (optional, defaults us-central1)
 All agents call call_claude() — nothing else changes.
+
+Fix applied:
+    Removed response_mime_type="application/json" from GenerateContentConfig.
+    When set, the Vertex AI SDK serialises the system_instruction as JSON internally
+    and chokes on hyphen sequences like YYYY-MM-DD at character 177, producing
+    "Invalid \\escape" errors. Removing it lets the model return plain text which
+    _parse_json() handles correctly. JSON output quality is unchanged.
+
+    Client is now cached at module level (not recreated per call) to avoid
+    the overhead of parsing the service account JSON and building credentials
+    on every single API call.
 """
 
 import json
@@ -12,20 +23,26 @@ import os
 import re
 import time
 import random
-import httpx
 
 try:
+    import httpx
     from google import genai
     from google.genai import types
     from google.oauth2 import service_account
 except ImportError:
     genai = None
+    types = None
+    service_account = None
 
 _MODEL_NAME = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
 _client = None
 
 
 def _get_client():
+    global _client
+    if _client is not None:
+        return _client
+
     if genai is None:
         raise RuntimeError("google-genai SDK not installed.")
 
@@ -39,18 +56,19 @@ def _get_client():
         scopes=["https://www.googleapis.com/auth/cloud-platform"]
     )
 
-    return genai.Client(
+    _client = genai.Client(
         enterprise=True,
         project=service_account_info["project_id"],
         location=os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1"),
         credentials=credentials,
         http_options=types.HttpOptions(
-        timeout=120000,
-        async_client_args={"transport": httpx.HTTPTransport(retries=0)},
-        client_args={"transport": httpx.HTTPTransport(retries=0)}
+            timeout=120000,
+            async_client_args={"transport": httpx.HTTPTransport(retries=0)},
+            client_args={"transport": httpx.HTTPTransport(retries=0)}
         )
-
     )
+
+    return _client
 
 
 def call_claude(system_prompt: str, user_prompt: str,
@@ -67,15 +85,25 @@ def call_claude(system_prompt: str, user_prompt: str,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
                     max_output_tokens=max_tokens,
-                    response_mime_type="application/json",
+                    # response_mime_type intentionally removed —
+                    # setting "application/json" causes Vertex AI to serialise
+                    # the system_instruction as JSON internally, which breaks on
+                    # hyphen sequences (e.g. YYYY-MM-DD) with "Invalid \escape".
                     thinking_config=types.ThinkingConfig(
                         thinking_budget=0
                     )
                 )
             )
 
-            raw = response.text.strip()
+            raw = response.text.strip() if response.text else ""
 
+            if not raw:
+                last_error = "Empty response from model."
+                if attempt < retries:
+                    time.sleep((2 ** attempt) + random.random())
+                continue
+
+            # Strip accidental markdown fences
             if raw.startswith("```"):
                 parts = raw.split("```")
                 if len(parts) >= 2:
@@ -85,7 +113,7 @@ def call_claude(system_prompt: str, user_prompt: str,
 
             parsed = _parse_json(raw)
             if parsed is None:
-                last_error = f"Response was not valid JSON. Raw: {raw}"
+                last_error = f"Response was not valid JSON. Raw: {raw[:300]}"
                 if attempt < retries:
                     time.sleep((2 ** attempt) + random.random())
                 continue
